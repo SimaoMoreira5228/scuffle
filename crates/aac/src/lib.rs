@@ -8,7 +8,7 @@
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(clippy::missing_const_for_fn)]
 
@@ -39,8 +39,11 @@ pub struct PartialAudioSpecificConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub enum AudioObjectType {
+    /// AAC main
     AacMain,
+    /// AAC LC
     AacLowComplexity,
+    /// Any other object type
     Unknown(u16),
 }
 
