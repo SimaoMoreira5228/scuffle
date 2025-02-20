@@ -1,4 +1,21 @@
+//! A crate for transmuxing video streams.
+//!
+//! ## Status
+//!
+//! This crate is currently under development and is not yet stable.
+//!
+//! Unit tests are not yet fully implemented. Use at your own risk.
+//!
+//! ## License
+//!
+//! This project is licensed under the [MIT](./LICENSE.MIT) or [Apache-2.0](./LICENSE.Apache-2.0) license.
+//! You can choose between one of them if you use this work.
+//!
+//! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![allow(clippy::single_match)]
+// TODO: #![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![deny(clippy::missing_const_for_fn)]
 
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
