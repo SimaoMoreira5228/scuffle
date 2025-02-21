@@ -86,6 +86,7 @@ pub use http;
 pub use http::Response;
 pub use server::{HttpServer, HttpServerBuilder};
 
+/// An incoming request.
 pub type IncomingRequest = http::Request<body::IncomingBody>;
 
 #[cfg(test)]
