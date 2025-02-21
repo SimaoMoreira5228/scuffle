@@ -46,8 +46,10 @@ pub use cpu::Cpu;
 /// An error that can occur while profiling.
 #[derive(Debug, thiserror::Error)]
 pub enum PprofError {
+    /// An I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// A pprof error.
     #[error(transparent)]
     Pprof(#[from] pprof::Error),
 }
