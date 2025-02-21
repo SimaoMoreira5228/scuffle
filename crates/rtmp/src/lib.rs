@@ -12,7 +12,7 @@
 //! You can choose between one of them if you use this work.
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 
 mod channels;

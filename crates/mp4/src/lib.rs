@@ -1,4 +1,4 @@
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 
 mod boxes;

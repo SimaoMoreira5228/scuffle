@@ -13,7 +13,7 @@
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![allow(clippy::single_match)]
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 
 use std::borrow::Cow;

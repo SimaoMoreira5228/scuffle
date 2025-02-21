@@ -7,7 +7,7 @@
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 
 mod bit_read;

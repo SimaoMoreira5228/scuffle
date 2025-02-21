@@ -55,7 +55,7 @@
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
-// TODO: #![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::multiple_unsafe_ops_per_block)]
 
