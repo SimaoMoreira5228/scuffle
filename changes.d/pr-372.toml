@@ -1,0 +1,134 @@
+[[scuffle-aac]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-amf0]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-av1]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-batching]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-bootstrap]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-bootstrap-derive]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-bootstrap-telemetry]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-bytes-util]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-context]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-expgolomb]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-ffmpeg]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-flv]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-future-ext]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-h3-webtransport]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-h264]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-h265]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-http]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-metrics]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-metrics-derive]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-mp4]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[nutype-enum]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[postcompile]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-pprof]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-rtmp]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-settings]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-signal]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
+
+[[scuffle-transmuxer]]
+category = "chore"
+description = "deny lints"
+authors = ["@lennartkloock"]
