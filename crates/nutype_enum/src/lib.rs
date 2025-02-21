@@ -7,6 +7,8 @@
 //! ## Examples
 //!
 //! ```rust
+//! use nutype_enum::nutype_enum;
+//!
 //! nutype_enum! {
 //!     pub enum AacPacketType(u8) {
 //!         SeqHdr = 0x0,
