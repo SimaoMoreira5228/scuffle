@@ -2,6 +2,7 @@ use std::io;
 
 use bytes::Bytes;
 
+/// A cursor for reading bytes.
 pub type BytesCursor = io::Cursor<Bytes>;
 
 /// A helper trait to implement zero copy reads on a `Cursor<Bytes>` type.
