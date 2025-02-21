@@ -234,8 +234,10 @@ impl config::FileStoredFormat for FormatWrapper {
 /// An error that can occur when parsing settings.
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
+    /// An error occurred while parsing the settings.
     #[error(transparent)]
     Config(#[from] config::ConfigError),
+    /// An error occurred while parsing the CLI arguments.
     #[cfg(feature = "cli")]
     #[error(transparent)]
     Clap(#[from] clap::Error),
