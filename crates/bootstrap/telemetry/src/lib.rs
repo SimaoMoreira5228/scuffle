@@ -108,6 +108,8 @@
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
 
 use anyhow::Context;
 use bytes::Bytes;
@@ -125,6 +127,7 @@ use scuffle_bootstrap::service::Service;
 #[cfg(feature = "opentelemetry-traces")]
 pub use tracing_opentelemetry;
 
+/// Opentelemetry support.
 #[cfg(feature = "opentelemetry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "opentelemetry")))]
 pub mod opentelemetry;
