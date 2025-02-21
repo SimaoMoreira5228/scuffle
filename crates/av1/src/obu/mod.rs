@@ -11,8 +11,12 @@ mod utils;
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct ObuHeader {
     /// `obu_type`
+    ///
+    /// 4 bits
     pub obu_type: ObuType,
     /// `obu_size` if `obu_has_size_field` is 1
+    ///
+    /// leb128()
     pub size: Option<u64>,
     /// `obu_extension_header()` if `obu_extension_flag` is 1
     pub extension_header: Option<ObuExtensionHeader>,
