@@ -75,7 +75,6 @@ macro_rules! nutype_enum {
             $(
                 $(#[$variant_attr])*
                 #[allow(non_upper_case_globals)]
-                #[allow(missing_docs)]
                 pub const $variant: Self = Self($value);
             )*
         }
