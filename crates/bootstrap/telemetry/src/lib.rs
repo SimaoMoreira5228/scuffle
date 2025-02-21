@@ -127,7 +127,6 @@ use scuffle_bootstrap::service::Service;
 #[cfg(feature = "opentelemetry-traces")]
 pub use tracing_opentelemetry;
 
-/// Opentelemetry support.
 #[cfg(feature = "opentelemetry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "opentelemetry")))]
 pub mod opentelemetry;

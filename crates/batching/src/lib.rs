@@ -149,9 +149,7 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
-/// Types related to the batcher and batch executor.
 pub mod batch;
-/// Types related to the dataloader.
 pub mod dataloader;
 
 pub use batch::{BatchExecutor, Batcher};

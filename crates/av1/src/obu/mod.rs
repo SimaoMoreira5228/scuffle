@@ -3,7 +3,6 @@ use std::io;
 use scuffle_bytes_util::BitReader;
 use utils::read_leb128;
 
-/// Sequence Header
 pub mod seq;
 mod utils;
 

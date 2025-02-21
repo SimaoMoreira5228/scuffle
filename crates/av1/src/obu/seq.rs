@@ -1,3 +1,5 @@
+//! Sequence Header
+
 use std::io;
 
 use byteorder::{BigEndian, ReadBytesExt};
