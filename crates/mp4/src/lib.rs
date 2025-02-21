@@ -1,5 +1,3 @@
-#![deny(unsafe_code)]
-
 mod boxes;
 
 pub mod codec;
