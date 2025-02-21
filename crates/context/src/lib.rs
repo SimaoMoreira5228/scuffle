@@ -213,6 +213,7 @@ impl Drop for TokenDropGuard {
     }
 }
 
+/// A handler is used to manage contexts and to cancel them.
 #[derive(Debug, Clone)]
 pub struct Handler {
     token: Arc<TokenDropGuard>,
