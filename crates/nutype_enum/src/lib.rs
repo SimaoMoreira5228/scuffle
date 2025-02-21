@@ -23,7 +23,6 @@
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 /// Helper macro to create a new enum type with a single field.
 ///

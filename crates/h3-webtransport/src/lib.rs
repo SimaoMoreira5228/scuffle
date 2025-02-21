@@ -5,7 +5,6 @@
 //! WebTransport over HTTP/3: <https://datatracker.ietf.org/doc/html/draft-ietf-webtrans-http3/>
 // TODO: #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 /// A WebTransport server
 pub mod server;

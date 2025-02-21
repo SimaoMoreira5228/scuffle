@@ -45,7 +45,6 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 // TODO: #![deny(missing_docs)]
-#![deny(clippy::missing_const_for_fn)]
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::multiple_unsafe_ops_per_block)]
 

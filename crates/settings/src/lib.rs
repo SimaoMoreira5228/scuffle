@@ -127,7 +127,6 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 // TODO: #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 use std::borrow::Cow;
 use std::path::Path;

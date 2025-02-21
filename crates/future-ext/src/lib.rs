@@ -14,7 +14,6 @@
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 /// The [`FutureExt`] trait is a trait that provides a more ergonomic way to
 /// extend futures with additional functionality. Similar to the `IteratorExt`

@@ -15,7 +15,6 @@
 #![allow(clippy::single_match)]
 // TODO: #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};

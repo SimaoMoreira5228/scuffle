@@ -70,7 +70,6 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 // TOOD: #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(clippy::missing_const_for_fn)]
 
 #[cfg(all(feature = "http3", not(feature = "tls-rustls")))]
 compile_error!("feature \"tls-rustls\" must be enabled when \"http3\" is enabled.");
