@@ -1118,27 +1118,19 @@ impl ColorConfig {
 
     /// Builds the ColorConfig struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(color_config: Option<ColorConfig>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match color_config {
-            Some(color) => {
-                writer.write_bit(true)?;
-                writer.write_bits(color.video_format.into(), 3)?;
-                writer.write_bit(color.video_full_range_flag)?;
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_bits(self.video_format.into(), 3)?;
+        writer.write_bit(self.video_full_range_flag)?;
 
-                match (color.color_primaries, color.transfer_characteristics, color.matrix_coefficients) {
-                    (2, 2, 2) => {
-                        writer.write_bit(false)?;
-                    }
-                    (color_priamries, transfer_characteristics, matrix_coefficients) => {
-                        writer.write_bit(true)?;
-                        writer.write_bits(color_priamries as u64, 8)?;
-                        writer.write_bits(transfer_characteristics as u64, 8)?;
-                        writer.write_bits(matrix_coefficients as u64, 8)?;
-                    }
-                }
-            }
-            None => {
+        match (self.color_primaries, self.transfer_characteristics, self.matrix_coefficients) {
+            (2, 2, 2) => {
                 writer.write_bit(false)?;
+            }
+            (color_priamries, transfer_characteristics, matrix_coefficients) => {
+                writer.write_bit(true)?;
+                writer.write_bits(color_priamries as u64, 8)?;
+                writer.write_bits(transfer_characteristics as u64, 8)?;
+                writer.write_bits(matrix_coefficients as u64, 8)?;
             }
         }
         Ok(())
@@ -1198,17 +1190,9 @@ impl ChromaSampleLoc {
 
     /// Builds the ChromaSampleLoc struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(chroma_sample_loc: Option<ChromaSampleLoc>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match chroma_sample_loc {
-            Some(chroma) => {
-                writer.write_bit(true)?;
-                writer.write_exp_golomb(chroma.chroma_sample_loc_type_top_field as u64)?;
-                writer.write_exp_golomb(chroma.chroma_sample_loc_type_bottom_field as u64)?;
-            }
-            None => {
-                writer.write_bit(false)?;
-            }
-        }
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_exp_golomb(self.chroma_sample_loc_type_top_field as u64)?;
+        writer.write_exp_golomb(self.chroma_sample_loc_type_bottom_field as u64)?;
         Ok(())
     }
 }
@@ -1265,17 +1249,9 @@ impl TimingInfo {
 
     /// Builds the TimingInfo struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(timing_info: Option<TimingInfo>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match timing_info {
-            Some(timing) => {
-                writer.write_bit(true)?;
-                writer.write_bits(timing.num_units_in_tick.get() as u64, 32)?;
-                writer.write_bits(timing.time_scale.get() as u64, 32)?;
-            }
-            None => {
-                writer.write_bit(false)?;
-            }
-        }
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_bits(self.num_units_in_tick.get() as u64, 32)?;
+        writer.write_bits(self.time_scale.get() as u64, 32)?;
         Ok(())
     }
 }
@@ -1285,10 +1261,12 @@ impl TimingInfo {
 mod tests {
     use std::io;
 
-    use scuffle_bytes_util::BitWriter;
+    use scuffle_bytes_util::{BitReader, BitWriter};
     use scuffle_expgolomb::BitWriterExpGolombExt;
 
-    use crate::sps::Sps;
+    use crate::{sps::{ChromaSampleLoc, Sps}, ColorConfig};
+
+    use super::TimingInfo;
 
     #[test]
     fn test_parse_sps_insufficient_bytes_() {
@@ -2353,5 +2331,191 @@ mod tests {
             timing_info: None,
         }
         ");
+    }
+
+    #[test] // TODO
+    fn test_build_sps() {
+        let mut sps = Vec::new();
+        let mut writer = BitWriter::new(&mut sps);
+
+
+        let result = Sps::parse(&sps).unwrap();
+    }
+
+    #[test] // TODO
+    fn test_build_sps_ext() {
+        let mut sps = Vec::new();
+        let mut writer = BitWriter::new(&mut sps);
+
+
+        let result = Sps::parse(&sps).unwrap();
+    }
+
+    #[test] // TODO
+    fn test_build_pic_order() {
+        let mut sps = Vec::new();
+        let mut writer = BitWriter::new(&mut sps);
+
+
+        let result = Sps::parse(&sps).unwrap();
+    }
+
+    #[test] // TODO
+    fn test_build_frame_crop() {
+        let mut sps = Vec::new();
+        let mut writer = BitWriter::new(&mut sps);
+
+
+        let result = Sps::parse(&sps).unwrap();
+    }
+
+    #[test] // TODO
+    fn test_build_sar() {
+        let mut sps = Vec::new();
+        let mut writer = BitWriter::new(&mut sps);
+
+
+        let result = Sps::parse(&sps).unwrap();
+    }
+
+    #[test]
+    fn test_build_color_config() {
+        // create color_config bitstream
+        let mut color_config = Vec::new();
+        let mut writer = BitWriter::new(&mut color_config);
+
+        writer.write_bits(4, 3).unwrap();
+        writer.write_bit(true).unwrap();
+
+        // color_desc_present_flag
+        writer.write_bit(true).unwrap();
+        writer.write_bits(2, 8).unwrap();
+        writer.write_bits(6, 8).unwrap();
+        writer.write_bits(1, 8).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut color_config);
+        let result = ColorConfig::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        ColorConfig::build(&result, &mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, color_config);
+    }
+
+    #[test]
+    fn test_build_color_config_no_desc() {
+        // create color_config bitstream
+        let mut color_config = Vec::new();
+        let mut writer = BitWriter::new(&mut color_config);
+
+        writer.write_bits(4, 3).unwrap();
+        writer.write_bit(true).unwrap();
+
+        // color_desc_present_flag
+        writer.write_bit(false).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut color_config);
+        let result = ColorConfig::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        ColorConfig::build(&result, &mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, color_config);
+    }
+
+    #[test]
+    fn test_build_color_config_funky() {
+        // create color_config bitstream
+        let mut color_config = Vec::new();
+        let mut writer = BitWriter::new(&mut color_config);
+
+        writer.write_bits(4, 3).unwrap();
+        writer.write_bit(true).unwrap();
+
+        // color_desc_present_flag
+        writer.write_bit(true).unwrap();
+        writer.write_bits(2, 8).unwrap();
+        writer.write_bits(2, 8).unwrap();
+        writer.write_bits(2, 8).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut color_config);
+        let result = ColorConfig::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        ColorConfig::build(&result, &mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        // the build will assume that the flag is false because it reads 2, 2, 2 (default values) for the properties.
+        assert_ne!(buf, color_config);
+    }
+
+    #[test]
+    fn test_build_chroma_sample() {
+        // create chroma_sample_loc bitstream
+        let mut chroma_sample_loc = Vec::new();
+        let mut writer = BitWriter::new(&mut chroma_sample_loc);
+
+        writer.write_exp_golomb(111).unwrap();
+        writer.write_exp_golomb(222).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut chroma_sample_loc);
+        let result = ChromaSampleLoc::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        ChromaSampleLoc::build(&result, &mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, chroma_sample_loc);
+    }
+
+    #[test]
+    fn test_build_timing_info() {
+        // create timing_info bitstream
+        let mut timing_info = Vec::new();
+        let mut writer = BitWriter::new(&mut timing_info);
+
+        writer.write_bits(1234, 32).unwrap();
+        writer.write_bits(321, 32).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut timing_info);
+        let result = TimingInfo::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        TimingInfo::build(&result, &mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, timing_info);
     }
 }
