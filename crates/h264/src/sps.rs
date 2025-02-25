@@ -549,6 +549,118 @@ impl Sps {
         })
     }
 
+    /// Builds the SPS struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_bit(false)?;
+        writer.write_bits(self.nal_ref_idc as u64, 2)?;
+        writer.write_bits(self.nal_unit_type.into(), 5)?;
+        writer.write_bits(self.profile_idc as u64, 8)?;
+
+        writer.write_bit(self.constraint_set0_flag)?;
+        writer.write_bit(self.constraint_set1_flag)?;
+        writer.write_bit(self.constraint_set2_flag)?;
+        writer.write_bit(self.constraint_set3_flag)?;
+        writer.write_bit(self.constraint_set4_flag)?;
+        writer.write_bit(self.constraint_set5_flag)?;
+        // reserved 2 bits
+        writer.write_bits(0, 2)?;
+
+        writer.write_bits(self.level_idc as u64, 8)?;
+        writer.write_exp_golomb(self.seq_parameter_set_id as u64)?;
+
+        // sps ext
+        if let Some(ext) = &self.ext {
+            ext.build(writer)?;
+        }
+
+        writer.write_exp_golomb(self.log2_max_frame_num_minus4 as u64)?;
+        writer.write_exp_golomb(self.pic_order_cnt_type as u64)?;
+
+        if self.pic_order_cnt_type == 0 {
+            writer.write_exp_golomb(self.log2_max_pic_order_cnt_lsb_minus4.unwrap() as u64)?;
+        } else if let Some(pic_order_cnt) = &self.pic_order_cnt_type1 {
+            pic_order_cnt.build(writer)?;
+        }
+
+        writer.write_exp_golomb(self.max_num_ref_frames as u64)?;
+        writer.write_bit(self.gaps_in_frame_num_value_allowed_flag)?;
+        writer.write_exp_golomb(self.pic_width_in_mbs_minus1)?;
+        writer.write_exp_golomb(self.pic_height_in_map_units_minus1)?;
+
+        if let Some(flag) = self.mb_adaptive_frame_field_flag {
+            writer.write_bit(false)?;
+            writer.write_bit(flag)?;
+        } else {
+            writer.write_bit(true)?;
+        }
+
+        writer.write_bit(self.direct_8x8_inference_flag)?;
+
+        if let Some(frame_crop_info) = &self.frame_crop_info {
+            writer.write_bit(true)?;
+            frame_crop_info.build(writer)?;
+        } else {
+            writer.write_bit(false)?;
+        }
+
+        match (
+            &self.sample_aspect_ratio,
+            &self.overscan_appropriate_flag,
+            &self.color_config,
+            &self.chroma_sample_loc,
+            &self.timing_info,
+        ) {
+            (None, None, None, None, None) => {
+                writer.write_bit(false)?;
+            }
+            _ => {
+                // vui_parameters_present_flag
+                writer.write_bit(true)?;
+
+                // aspect_ratio_info_present_flag
+                if let Some(sar) = &self.sample_aspect_ratio {
+                    writer.write_bit(true)?;
+                    sar.build(writer)?;
+                } else {
+                    writer.write_bit(false)?;
+                }
+
+                // overscan_info_present_flag
+                if let Some(overscan) = self.overscan_appropriate_flag {
+                    writer.write_bit(true)?;
+                    writer.write_bit(overscan)?;
+                } else {
+                    writer.write_bit(false)?;
+                }
+
+                // video_signal_type_prsent_flag
+                if let Some(color) = &self.color_config {
+                    writer.write_bit(true)?;
+                    color.build(writer)?;
+                } else {
+                    writer.write_bit(false)?;
+                }
+
+                // chroma_log_info_present_flag
+                if let Some(chroma) = &self.chroma_sample_loc {
+                    writer.write_bit(true)?;
+                    chroma.build(writer)?;
+                } else {
+                    writer.write_bit(false)?;
+                }
+
+                // timing_info_present_flag
+                if let Some(timing) = &self.timing_info {
+                    writer.write_bit(true)?;
+                    timing.build(writer)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// The height as a u64. This is computed from other fields, and isn't directly set.
     ///
     /// `height = ((2 - frame_mbs_only_flag as u64) * (pic_height_in_map_units_minus1 + 1) * 16) -
@@ -732,32 +844,24 @@ impl SpsExtended {
 
     /// Builds the SPSExtended struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(sps_extended: Option<SpsExtended>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match sps_extended {
-            Some(ext) => {
-                writer.write_bit(true)?;
-                writer.write_exp_golomb(ext.chroma_format_idc as u64)?;
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_exp_golomb(self.chroma_format_idc as u64)?;
 
-                if ext.chroma_format_idc == 3 {
-                    writer.write_bit(ext.separate_color_plane_flag)?;
-                }
+        if self.chroma_format_idc == 3 {
+            writer.write_bit(self.separate_color_plane_flag)?;
+        }
 
-                writer.write_exp_golomb(ext.bit_depth_luma_minus8 as u64)?;
-                writer.write_exp_golomb(ext.bit_depth_chroma_minus8 as u64)?;
-                writer.write_bit(ext.qpprime_y_zero_transform_bypass_flag)?;
+        writer.write_exp_golomb(self.bit_depth_luma_minus8 as u64)?;
+        writer.write_exp_golomb(self.bit_depth_chroma_minus8 as u64)?;
+        writer.write_bit(self.qpprime_y_zero_transform_bypass_flag)?;
 
-                writer.write_bit(!ext.scaling_matrix.is_empty())?;
+        writer.write_bit(!self.scaling_matrix.is_empty())?;
 
-                for vec in ext.scaling_matrix {
-                    writer.write_bit(!vec.is_empty())?;
+        for vec in &self.scaling_matrix {
+            writer.write_bit(!vec.is_empty())?;
 
-                    for expg in vec {
-                        writer.write_signed_exp_golomb(expg)?;
-                    }
-                }
-            }
-            None => {
-                writer.write_bit(false)?;
+            for expg in vec {
+                writer.write_signed_exp_golomb(*expg)?;
             }
         }
         Ok(())
@@ -864,25 +968,14 @@ impl PicOrderCountType1 {
 
     /// Builds the PicOrderCountType1 struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(
-        pic_order_count_type: Option<PicOrderCountType1>,
-        writer: &mut BitWriter<T>,
-    ) -> io::Result<()> {
-        match pic_order_count_type {
-            Some(pic) => {
-                writer.write_bit(true)?;
-                writer.write_bit(pic.delta_pic_order_always_zero_flag)?;
-                writer.write_signed_exp_golomb(pic.offset_for_non_ref_pic)?;
-                writer.write_signed_exp_golomb(pic.offset_for_top_to_bottom_field)?;
-                writer.write_exp_golomb(pic.num_ref_frames_in_pic_order_cnt_cycle)?;
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_bit(self.delta_pic_order_always_zero_flag)?;
+        writer.write_signed_exp_golomb(self.offset_for_non_ref_pic)?;
+        writer.write_signed_exp_golomb(self.offset_for_top_to_bottom_field)?;
+        writer.write_exp_golomb(self.num_ref_frames_in_pic_order_cnt_cycle)?;
 
-                for num in pic.offset_for_ref_frame {
-                    writer.write_signed_exp_golomb(num)?;
-                }
-            }
-            None => {
-                writer.write_bit(false)?;
-            }
+        for num in &self.offset_for_ref_frame {
+            writer.write_signed_exp_golomb(*num)?;
         }
         Ok(())
     }
@@ -964,19 +1057,11 @@ impl FrameCropInfo {
 
     /// Builds the FrameCropInfo struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(frame_crop_info: Option<FrameCropInfo>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match frame_crop_info {
-            Some(frame) => {
-                writer.write_bit(true)?;
-                writer.write_exp_golomb(frame.frame_crop_left_offset)?;
-                writer.write_exp_golomb(frame.frame_crop_right_offset)?;
-                writer.write_exp_golomb(frame.frame_crop_top_offset)?;
-                writer.write_exp_golomb(frame.frame_crop_bottom_offset)?;
-            }
-            None => {
-                writer.write_bit(false)?;
-            }
-        }
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_exp_golomb(self.frame_crop_left_offset)?;
+        writer.write_exp_golomb(self.frame_crop_right_offset)?;
+        writer.write_exp_golomb(self.frame_crop_top_offset)?;
+        writer.write_exp_golomb(self.frame_crop_bottom_offset)?;
         Ok(())
     }
 }
@@ -1041,20 +1126,12 @@ impl SarDimensions {
 
     /// Builds the SarDimensions struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(sar_dimensions: Option<SarDimensions>, writer: &mut BitWriter<T>) -> io::Result<()> {
-        match sar_dimensions {
-            Some(sample_aspect_ratio) => {
-                writer.write_bit(true)?;
-                writer.write_bits(sample_aspect_ratio.aspect_ratio_idc.into(), 8)?;
+    pub fn build<T: io::Write>(&self, writer: &mut BitWriter<T>) -> io::Result<()> {
+        writer.write_bits(self.aspect_ratio_idc.into(), 8)?;
 
-                if sample_aspect_ratio.aspect_ratio_idc == AspectRatioIdc(255) {
-                    writer.write_bits(sample_aspect_ratio.sar_width as u64, 16)?;
-                    writer.write_bits(sample_aspect_ratio.sar_height as u64, 16)?;
-                }
-            }
-            None => {
-                writer.write_bit(false)?;
-            }
+        if self.aspect_ratio_idc == AspectRatioIdc(255) {
+            writer.write_bits(self.sar_width as u64, 16)?;
+            writer.write_bits(self.sar_height as u64, 16)?;
         }
         Ok(())
     }
@@ -1270,8 +1347,8 @@ mod tests {
     use scuffle_expgolomb::BitWriterExpGolombExt;
 
     use super::TimingInfo;
-    use crate::ColorConfig;
-    use crate::sps::{ChromaSampleLoc, Sps};
+    use crate::sps::{ChromaSampleLoc, FrameCropInfo, PicOrderCountType1, SarDimensions, Sps};
+    use crate::{ColorConfig, SpsExtended};
 
     #[test]
     fn test_parse_sps_insufficient_bytes_() {
@@ -1334,7 +1411,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_sps_4k_144fps() {
+    fn test_parse_build_sps_4k_144fps() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
@@ -1459,7 +1536,7 @@ mod tests {
                     bit_depth_luma_minus8: 0,
                     bit_depth_chroma_minus8: 0,
                     qpprime_y_zero_transform_bypass_flag: false,
-                    seq_scaling_matrix_present_flag: false,
+                    scaling_matrix: [],
                 },
             ),
             log2_max_frame_num_minus4: 0,
@@ -1499,10 +1576,34 @@ mod tests {
         assert_eq!(144.0, result.frame_rate());
         assert_eq!(3840, result.width());
         assert_eq!(2160, result.height());
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example sps
+        result.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        // sometimes bits can get lost because we save
+        // some space with how the SPS is rebuilt.
+        // so we can just confirm that they're the same
+        // by rebuilding it.
+        let reduced = Sps::parse(&buf).unwrap();
+        assert_eq!(reduced, result);
+
+        // now we can check that the bitstream from
+        // the reduced version should be the same
+        let mut reduced_buf = Vec::new();
+        let mut writer3 = BitWriter::new(&mut reduced_buf);
+
+        reduced.build(&mut writer3).unwrap();
+        writer3.finish().unwrap();
+        assert_eq!(reduced_buf, buf);
     }
 
     #[test]
-    fn test_parse_sps_1080_480fps_scaling_matrix() {
+    fn test_parse_build_sps_1080_480fps_scaling_matrix() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
@@ -1688,7 +1789,23 @@ mod tests {
                     bit_depth_luma_minus8: 0,
                     bit_depth_chroma_minus8: 0,
                     qpprime_y_zero_transform_bypass_flag: false,
-                    seq_scaling_matrix_present_flag: true,
+                    scaling_matrix: [
+                        [
+                            4,
+                            -12,
+                        ],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                    ],
                 },
             ),
             log2_max_frame_num_minus4: 0,
@@ -1751,10 +1868,34 @@ mod tests {
         assert_eq!(480.0, result.frame_rate());
         assert_eq!(1920, result.width());
         assert_eq!(1080, result.height());
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example sps
+        result.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        // sometimes bits can get lost because we save
+        // some space with how the SPS is rebuilt.
+        // so we can just confirm that they're the same
+        // by rebuilding it.
+        let reduced = Sps::parse(&buf).unwrap();
+        assert_eq!(reduced, result);
+
+        // now we can check that the bitstream from
+        // the reduced version should be the same
+        let mut reduced_buf = Vec::new();
+        let mut writer3 = BitWriter::new(&mut reduced_buf);
+
+        reduced.build(&mut writer3).unwrap();
+        writer3.finish().unwrap();
+        assert_eq!(reduced_buf, buf);
     }
 
     #[test]
-    fn test_parse_sps_1280x800_0fps() {
+    fn test_parse_build_sps_1280x800_0fps() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
@@ -1891,6 +2032,30 @@ mod tests {
         assert_eq!(0.0, result.frame_rate());
         assert_eq!(1280, result.width());
         assert_eq!(800, result.height());
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example sps
+        result.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        // sometimes bits can get lost because we save
+        // some space with how the SPS is rebuilt.
+        // so we can just confirm that they're the same
+        // by rebuilding it.
+        let reduced = Sps::parse(&buf).unwrap();
+        assert_eq!(reduced, result);
+
+        // now we can check that the bitstream from
+        // the reduced version should be the same
+        let mut reduced_buf = Vec::new();
+        let mut writer3 = BitWriter::new(&mut reduced_buf);
+
+        reduced.build(&mut writer3).unwrap();
+        writer3.finish().unwrap();
+        assert_eq!(reduced_buf, buf);
     }
 
     #[test]
@@ -2213,7 +2378,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_sps_no_vui() {
+    fn test_parse_build_sps_no_vui() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
@@ -2336,53 +2501,261 @@ mod tests {
             timing_info: None,
         }
         ");
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example sps
+        result.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        // sometimes bits can get lost because we save
+        // some space with how the SPS is rebuilt.
+        // so we can just confirm that they're the same
+        // by rebuilding it.
+        let reduced = Sps::parse(&buf).unwrap();
+        assert_eq!(reduced, result);
+
+        // now we can check that the bitstream from
+        // the reduced version should be the same
+        let mut reduced_buf = Vec::new();
+        let mut writer3 = BitWriter::new(&mut reduced_buf);
+
+        reduced.build(&mut writer3).unwrap();
+        writer3.finish().unwrap();
+        assert_eq!(reduced_buf, buf);
     }
 
-    #[test] // TODO
-    fn test_build_sps() {
-        let mut sps = Vec::new();
-        let mut writer = BitWriter::new(&mut sps);
+    #[test]
+    fn test_build_sps_ext_chroma_not_3_and_no_scaling_matrix() {
+        // create data bitstream for sps_ext
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
-        let result = Sps::parse(&sps).unwrap();
+        writer.write_exp_golomb(1).unwrap();
+        writer.write_exp_golomb(2).unwrap();
+        writer.write_exp_golomb(4).unwrap();
+        writer.write_bit(true).unwrap();
+        writer.write_bit(false).unwrap();
+
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let sps_ext = SpsExtended::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        sps_ext.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
     }
 
-    #[test] // TODO
-    fn test_build_sps_ext() {
-        let mut sps = Vec::new();
-        let mut writer = BitWriter::new(&mut sps);
+    #[test]
+    fn test_build_sps_ext_chroma_3_and_scaling_matrix() {
+        // create bitstream for sps_ext
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
-        let result = Sps::parse(&sps).unwrap();
+        // set chroma_format_idc = 3
+        writer.write_exp_golomb(3).unwrap();
+        // separate_color_plane_flag since chroma_format_idc = 3
+        writer.write_bit(true).unwrap();
+        writer.write_exp_golomb(2).unwrap();
+        writer.write_exp_golomb(4).unwrap();
+        writer.write_bit(true).unwrap();
+        // set seq_scaling_matrix_present_flag
+        writer.write_bit(true).unwrap();
+
+        // scaling matrix loop happens 12 times since chroma_format_idc is 3
+        // loop 1 of 12
+        writer.write_bit(true).unwrap();
+        // subloop 1 of 64
+        // next_scale starts as 8, we add 1 so it's 9
+        writer.write_signed_exp_golomb(1).unwrap();
+        // subloop 2 of 64
+        // next_scale is 9, we add 2 so it's 11
+        writer.write_signed_exp_golomb(2).unwrap();
+        // subloop 3 of 64
+        // next_scale is 11, we add 3 so it's 14
+        writer.write_signed_exp_golomb(3).unwrap();
+        // subloop 4 of 64: we want to break out of the loop now
+        // next_scale is 14, we subtract 14 so it's 0, triggering a break
+        writer.write_signed_exp_golomb(-14).unwrap();
+
+        // loop 2 of 12
+        writer.write_bit(true).unwrap();
+        // subloop 1 of 64
+        // next_scale starts at 8, we add 3 so it's 11
+        writer.write_signed_exp_golomb(3).unwrap();
+        // subloop 2 of 64
+        // next_scale is 11, we add 5 so it's 16
+        writer.write_signed_exp_golomb(5).unwrap();
+        // subloop 3 of 64; we want to break out of the loop now
+        // next_scale is 16, we subtract 16 so it's 0, triggering a break
+        writer.write_signed_exp_golomb(-16).unwrap();
+
+        // loop 3 of 12
+        writer.write_bit(true).unwrap();
+        // subloop 1 of 64
+        // next_scale starts at 8, we add 1 so it's 9
+        writer.write_signed_exp_golomb(1).unwrap();
+        // subloop 2 of 64; we want to break out of the loop now
+        // next_scale is 9, we subtract 9 so it's 0, triggering a break
+        writer.write_signed_exp_golomb(-9).unwrap();
+
+        // loop 4 of 12
+        writer.write_bit(true).unwrap();
+        // subloop 1 of 64; we want to break out of the loop now
+        // next scale starts at 8, we subtract 8 so it's 0, triggering a break
+        writer.write_signed_exp_golomb(-8).unwrap();
+
+        // loop 5 thru 11: try writing nothing
+        writer.write_bits(0, 7).unwrap();
+
+        // loop 12 of 12: try writing something
+        writer.write_bit(true).unwrap();
+        // subloop 1 of 64; we want to break out of the loop now
+        // next scale starts at 8, we subtract 8 so it's 0, triggering a break
+        writer.write_signed_exp_golomb(-8).unwrap();
+
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let sps_ext = SpsExtended::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        sps_ext.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
     }
 
-    #[test] // TODO
+    #[test]
     fn test_build_pic_order() {
-        let mut sps = Vec::new();
-        let mut writer = BitWriter::new(&mut sps);
+        // create bitstream for pic_order_count_type1
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
-        let result = Sps::parse(&sps).unwrap();
+        writer.write_bit(true).unwrap();
+        writer.write_signed_exp_golomb(3).unwrap();
+        writer.write_signed_exp_golomb(7).unwrap();
+        writer.write_exp_golomb(2).unwrap();
+
+        // loop
+        writer.write_signed_exp_golomb(4).unwrap();
+        writer.write_signed_exp_golomb(8).unwrap();
+
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let pic_order_count_type1 = PicOrderCountType1::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        pic_order_count_type1.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
     }
 
-    #[test] // TODO
+    #[test]
     fn test_build_frame_crop() {
-        let mut sps = Vec::new();
-        let mut writer = BitWriter::new(&mut sps);
+        // create bitstream for frame_crop
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
-        let result = Sps::parse(&sps).unwrap();
+        writer.write_exp_golomb(1).unwrap();
+        writer.write_exp_golomb(10).unwrap();
+        writer.write_exp_golomb(7).unwrap();
+        writer.write_exp_golomb(38).unwrap();
+
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let frame_crop_info = FrameCropInfo::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        frame_crop_info.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
     }
 
-    #[test] // TODO
-    fn test_build_sar() {
-        let mut sps = Vec::new();
-        let mut writer = BitWriter::new(&mut sps);
+    #[test]
+    fn test_build_sar_idc_not_255() {
+        // create bitstream for sample_aspect_ratio
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
-        let result = Sps::parse(&sps).unwrap();
+        writer.write_bits(1, 8).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let sample_aspect_ratio = SarDimensions::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        sample_aspect_ratio.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
+    }
+
+    #[test]
+    fn test_build_sar_idc_255() {
+        // create bitstream for sample_aspect_ratio
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
+
+        writer.write_bits(255, 8).unwrap();
+        writer.write_bits(11, 16).unwrap();
+        writer.write_bits(32, 16).unwrap();
+        writer.finish().unwrap();
+
+        // parse bitstream
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let sample_aspect_ratio = SarDimensions::parse(&mut reader).unwrap();
+
+        // create a writer for the builder
+        let mut buf = Vec::new();
+        let mut writer2 = BitWriter::new(&mut buf);
+
+        // build from the example result
+        sample_aspect_ratio.build(&mut writer2).unwrap();
+        writer2.finish().unwrap();
+
+        assert_eq!(buf, data);
     }
 
     #[test]
     fn test_build_color_config() {
-        // create color_config bitstream
-        let mut color_config = Vec::new();
-        let mut writer = BitWriter::new(&mut color_config);
+        // create bitstream for color_config
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
         writer.write_bits(4, 3).unwrap();
         writer.write_bit(true).unwrap();
@@ -2395,25 +2768,25 @@ mod tests {
         writer.finish().unwrap();
 
         // parse bitstream
-        let mut reader = BitReader::new_from_slice(&mut color_config);
-        let result = ColorConfig::parse(&mut reader).unwrap();
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let color_config = ColorConfig::parse(&mut reader).unwrap();
 
         // create a writer for the builder
         let mut buf = Vec::new();
         let mut writer2 = BitWriter::new(&mut buf);
 
         // build from the example result
-        ColorConfig::build(&result, &mut writer2).unwrap();
+        color_config.build(&mut writer2).unwrap();
         writer2.finish().unwrap();
 
-        assert_eq!(buf, color_config);
+        assert_eq!(buf, data);
     }
 
     #[test]
     fn test_build_color_config_no_desc() {
-        // create color_config bitstream
-        let mut color_config = Vec::new();
-        let mut writer = BitWriter::new(&mut color_config);
+        // create bitstream for color_config
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
         writer.write_bits(4, 3).unwrap();
         writer.write_bit(true).unwrap();
@@ -2423,99 +2796,67 @@ mod tests {
         writer.finish().unwrap();
 
         // parse bitstream
-        let mut reader = BitReader::new_from_slice(&mut color_config);
-        let result = ColorConfig::parse(&mut reader).unwrap();
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let color_config = ColorConfig::parse(&mut reader).unwrap();
 
         // create a writer for the builder
         let mut buf = Vec::new();
         let mut writer2 = BitWriter::new(&mut buf);
 
         // build from the example result
-        ColorConfig::build(&result, &mut writer2).unwrap();
+        color_config.build(&mut writer2).unwrap();
         writer2.finish().unwrap();
 
-        assert_eq!(buf, color_config);
-    }
-
-    #[test]
-    fn test_build_color_config_funky() {
-        // create color_config bitstream
-        let mut color_config = Vec::new();
-        let mut writer = BitWriter::new(&mut color_config);
-
-        writer.write_bits(4, 3).unwrap();
-        writer.write_bit(true).unwrap();
-
-        // color_desc_present_flag
-        writer.write_bit(true).unwrap();
-        writer.write_bits(2, 8).unwrap();
-        writer.write_bits(2, 8).unwrap();
-        writer.write_bits(2, 8).unwrap();
-        writer.finish().unwrap();
-
-        // parse bitstream
-        let mut reader = BitReader::new_from_slice(&mut color_config);
-        let result = ColorConfig::parse(&mut reader).unwrap();
-
-        // create a writer for the builder
-        let mut buf = Vec::new();
-        let mut writer2 = BitWriter::new(&mut buf);
-
-        // build from the example result
-        ColorConfig::build(&result, &mut writer2).unwrap();
-        writer2.finish().unwrap();
-
-        // the build will assume that the flag is false because it reads 2, 2, 2 (default values) for the properties.
-        assert_ne!(buf, color_config);
+        assert_eq!(buf, data);
     }
 
     #[test]
     fn test_build_chroma_sample() {
-        // create chroma_sample_loc bitstream
-        let mut chroma_sample_loc = Vec::new();
-        let mut writer = BitWriter::new(&mut chroma_sample_loc);
+        // create bitstream for chroma_sample_loc
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
         writer.write_exp_golomb(111).unwrap();
         writer.write_exp_golomb(222).unwrap();
         writer.finish().unwrap();
 
         // parse bitstream
-        let mut reader = BitReader::new_from_slice(&mut chroma_sample_loc);
-        let result = ChromaSampleLoc::parse(&mut reader).unwrap();
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let chroma_sample_loc = ChromaSampleLoc::parse(&mut reader).unwrap();
 
         // create a writer for the builder
         let mut buf = Vec::new();
         let mut writer2 = BitWriter::new(&mut buf);
 
         // build from the example result
-        ChromaSampleLoc::build(&result, &mut writer2).unwrap();
+        chroma_sample_loc.build(&mut writer2).unwrap();
         writer2.finish().unwrap();
 
-        assert_eq!(buf, chroma_sample_loc);
+        assert_eq!(buf, data);
     }
 
     #[test]
     fn test_build_timing_info() {
-        // create timing_info bitstream
-        let mut timing_info = Vec::new();
-        let mut writer = BitWriter::new(&mut timing_info);
+        // create bitstream for timing_info
+        let mut data = Vec::new();
+        let mut writer = BitWriter::new(&mut data);
 
         writer.write_bits(1234, 32).unwrap();
         writer.write_bits(321, 32).unwrap();
         writer.finish().unwrap();
 
         // parse bitstream
-        let mut reader = BitReader::new_from_slice(&mut timing_info);
-        let result = TimingInfo::parse(&mut reader).unwrap();
+        let mut reader = BitReader::new_from_slice(&mut data);
+        let timing_info = TimingInfo::parse(&mut reader).unwrap();
 
         // create a writer for the builder
         let mut buf = Vec::new();
         let mut writer2 = BitWriter::new(&mut buf);
 
         // build from the example result
-        TimingInfo::build(&result, &mut writer2).unwrap();
+        timing_info.build(&mut writer2).unwrap();
         writer2.finish().unwrap();
 
-        assert_eq!(buf, timing_info);
+        assert_eq!(buf, data);
     }
 }

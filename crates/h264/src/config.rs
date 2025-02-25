@@ -317,7 +317,7 @@ mod tests {
                     bit_depth_luma_minus8: 0,
                     bit_depth_chroma_minus8: 0,
                     qpprime_y_zero_transform_bypass_flag: false,
-                    seq_scaling_matrix_present_flag: false,
+                    scaling_matrix: [],
                 },
             ),
             log2_max_frame_num_minus4: 0,
