@@ -2,8 +2,8 @@ use std::io;
 use std::num::NonZeroU32;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use scuffle_bytes_util::BitReader;
-use scuffle_expgolomb::BitReaderExpGolombExt;
+use scuffle_bytes_util::{BitReader, BitWriter};
+use scuffle_expgolomb::{BitReaderExpGolombExt, BitWriterExpGolombExt};
 
 use crate::{AspectRatioIdc, NALUnitType, VideoFormat};
 
@@ -660,14 +660,9 @@ pub struct SpsExtended {
     /// ISO/IEC-14496-10-2022 - 7.4.2.1.1
     pub qpprime_y_zero_transform_bypass_flag: bool,
 
-    /// The `seq_scaling_matrix_present_flag` is a single bit.
-    ///
-    /// 0 means the flags are NOT present.
-    ///
-    /// 1 means the flags `seq_scaling_matrix_present_flag[i]` for i values \[0, 7\] or \[0, 11\] are set.
-    ///
-    /// ISO/IEC-14496-10-2022 - 7.4.2.1.1
-    pub seq_scaling_matrix_present_flag: bool,
+    /// The `scaling_matrix`. If the length is nonzero, then
+    /// `seq_scaling_matrix_present_flag` must have been set.
+    pub scaling_matrix: Vec<Vec<i64>>,
 }
 
 impl Default for SpsExtended {
@@ -684,7 +679,7 @@ impl SpsExtended {
         bit_depth_luma_minus8: 0,
         bit_depth_chroma_minus8: 0,
         qpprime_y_zero_transform_bypass_flag: false,
-        seq_scaling_matrix_present_flag: false,
+        scaling_matrix: vec![],
     };
 
     /// Parses an extended SPS from a bitstream.
@@ -701,17 +696,21 @@ impl SpsExtended {
         let bit_depth_chroma_minus8 = reader.read_exp_golomb()? as u8;
         let qpprime_y_zero_transform_bypass_flag = reader.read_bit()?;
         let seq_scaling_matrix_present_flag = reader.read_bit()?;
+        let mut scaling_matrix: Vec<Vec<i64>> = vec![];
 
         if seq_scaling_matrix_present_flag {
             // We need to read the scaling matrices here, but we don't need them
             // for decoding, so we just skip them.
             let count = if chroma_format_idc != 3 { 8 } else { 12 };
             for i in 0..count {
-                if reader.read_bit()? {
+                let bit = reader.read_bit()?;
+                scaling_matrix.push(vec![]);
+                if bit {
                     let size = if i < 6 { 16 } else { 64 };
                     let mut next_scale = 8;
                     for _ in 0..size {
                         let delta_scale = reader.read_signed_exp_golomb()?;
+                        scaling_matrix[i].push(delta_scale);
                         next_scale = (next_scale + delta_scale + 256) % 256;
                         if next_scale == 0 {
                             break;
@@ -727,8 +726,41 @@ impl SpsExtended {
             bit_depth_luma_minus8,
             bit_depth_chroma_minus8,
             qpprime_y_zero_transform_bypass_flag,
-            seq_scaling_matrix_present_flag,
+            scaling_matrix,
         })
+    }
+
+    /// Builds the SPSExtended struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(sps_extended: Option<SpsExtended>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match sps_extended {
+            Some(ext) => {
+                writer.write_bit(true)?;
+                writer.write_exp_golomb(ext.chroma_format_idc as u64)?;
+
+                if ext.chroma_format_idc == 3 {
+                    writer.write_bit(ext.separate_color_plane_flag)?;
+                }
+
+                writer.write_exp_golomb(ext.bit_depth_luma_minus8 as u64)?;
+                writer.write_exp_golomb(ext.bit_depth_chroma_minus8 as u64)?;
+                writer.write_bit(ext.qpprime_y_zero_transform_bypass_flag)?;
+
+                writer.write_bit(!ext.scaling_matrix.is_empty())?;
+
+                for vec in ext.scaling_matrix {
+                    writer.write_bit(!vec.is_empty())?;
+
+                    for expg in vec {
+                        writer.write_signed_exp_golomb(expg)?;
+                    }
+                }
+
+            } None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -829,6 +861,27 @@ impl PicOrderCountType1 {
             offset_for_ref_frame,
         })
     }
+
+    /// Builds the PicOrderCountType1 struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(pic_order_count_type: Option<PicOrderCountType1>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match pic_order_count_type {
+            Some(pic) => {
+                writer.write_bit(true)?;
+                writer.write_bit(pic.delta_pic_order_always_zero_flag)?;
+                writer.write_signed_exp_golomb(pic.offset_for_non_ref_pic)?;
+                writer.write_signed_exp_golomb(pic.offset_for_top_to_bottom_field)?;
+                writer.write_exp_golomb(pic.num_ref_frames_in_pic_order_cnt_cycle)?;
+
+                for num in pic.offset_for_ref_frame {
+                    writer.write_signed_exp_golomb(num)?;
+                }
+            } None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// `FrameCropInfo` contains the frame cropping info.
@@ -904,6 +957,23 @@ impl FrameCropInfo {
             frame_crop_bottom_offset,
         })
     }
+
+    /// Builds the FrameCropInfo struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(frame_crop_info: Option<FrameCropInfo>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match frame_crop_info {
+            Some(frame) => {
+                writer.write_bit(true)?;
+                writer.write_exp_golomb(frame.frame_crop_left_offset)?;
+                writer.write_exp_golomb(frame.frame_crop_right_offset)?;
+                writer.write_exp_golomb(frame.frame_crop_top_offset)?;
+                writer.write_exp_golomb(frame.frame_crop_bottom_offset)?;
+            } None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// `SarDimensions` contains the fields that are set when `aspect_ratio_info_present_flag == 1`,
@@ -962,6 +1032,26 @@ impl SarDimensions {
             sar_width,
             sar_height,
         })
+    }
+
+    /// Builds the SarDimensions struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(sar_dimensions: Option<SarDimensions>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match sar_dimensions {
+            Some(sample_aspect_ratio) => {
+                writer.write_bit(true)?;
+                writer.write_bits(sample_aspect_ratio.aspect_ratio_idc.into(), 8)?;
+
+                if sample_aspect_ratio.aspect_ratio_idc == AspectRatioIdc(255) {
+                    writer.write_bits(sample_aspect_ratio.sar_width as u64, 16)?;
+                    writer.write_bits(sample_aspect_ratio.sar_height as u64, 16)?;
+                }
+            }
+            None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1025,6 +1115,34 @@ impl ColorConfig {
             matrix_coefficients,
         })
     }
+
+    /// Builds the ColorConfig struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(color_config: Option<ColorConfig>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match color_config {
+            Some(color) => {
+                writer.write_bit(true)?;
+                writer.write_bits(color.video_format.into(), 3)?;
+                writer.write_bit(color.video_full_range_flag)?;
+
+                match (color.color_primaries, color.transfer_characteristics, color.matrix_coefficients) {
+                    (2, 2, 2) => {
+                        writer.write_bit(false)?;
+                    }
+                    (color_priamries, transfer_characteristics, matrix_coefficients) => {
+                        writer.write_bit(true)?;
+                        writer.write_bits(color_priamries as u64, 8)?;
+                        writer.write_bits(transfer_characteristics as u64, 8)?;
+                        writer.write_bits(matrix_coefficients as u64, 8)?;
+                    }
+                }
+            }
+            None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// `ChromaSampleLoc` contains the fields that are set when `chroma_loc_info_present_flag == 1`,
@@ -1077,6 +1195,22 @@ impl ChromaSampleLoc {
             chroma_sample_loc_type_bottom_field,
         })
     }
+
+    /// Builds the ChromaSampleLoc struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(chroma_sample_loc: Option<ChromaSampleLoc>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match chroma_sample_loc {
+            Some(chroma) => {
+                writer.write_bit(true)?;
+                writer.write_exp_golomb(chroma.chroma_sample_loc_type_top_field as u64)?;
+                writer.write_exp_golomb(chroma.chroma_sample_loc_type_bottom_field as u64)?;
+            }
+            None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// `TimingInfo` contains the fields that are set when `timing_info_present_flag == 1`.
@@ -1127,6 +1261,22 @@ impl TimingInfo {
             num_units_in_tick,
             time_scale,
         })
+    }
+
+    /// Builds the TimingInfo struct into a byte stream.
+    /// Returns a built byte stream.
+    pub fn build<T: io::Write>(timing_info: Option<TimingInfo>, writer: &mut BitWriter<T>) -> io::Result<()> {
+        match timing_info {
+            Some(timing) => {
+                writer.write_bit(true)?;
+                writer.write_bits(timing.num_units_in_tick.get() as u64, 32)?;
+                writer.write_bits(timing.time_scale.get() as u64, 32)?;
+            }
+            None => {
+                writer.write_bit(false)?;
+            }
+        }
+        Ok(())
     }
 }
 
