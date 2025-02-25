@@ -755,8 +755,8 @@ impl SpsExtended {
                         writer.write_signed_exp_golomb(expg)?;
                     }
                 }
-
-            } None => {
+            }
+            None => {
                 writer.write_bit(false)?;
             }
         }
@@ -864,7 +864,10 @@ impl PicOrderCountType1 {
 
     /// Builds the PicOrderCountType1 struct into a byte stream.
     /// Returns a built byte stream.
-    pub fn build<T: io::Write>(pic_order_count_type: Option<PicOrderCountType1>, writer: &mut BitWriter<T>) -> io::Result<()> {
+    pub fn build<T: io::Write>(
+        pic_order_count_type: Option<PicOrderCountType1>,
+        writer: &mut BitWriter<T>,
+    ) -> io::Result<()> {
         match pic_order_count_type {
             Some(pic) => {
                 writer.write_bit(true)?;
@@ -876,7 +879,8 @@ impl PicOrderCountType1 {
                 for num in pic.offset_for_ref_frame {
                     writer.write_signed_exp_golomb(num)?;
                 }
-            } None => {
+            }
+            None => {
                 writer.write_bit(false)?;
             }
         }
@@ -968,7 +972,8 @@ impl FrameCropInfo {
                 writer.write_exp_golomb(frame.frame_crop_right_offset)?;
                 writer.write_exp_golomb(frame.frame_crop_top_offset)?;
                 writer.write_exp_golomb(frame.frame_crop_bottom_offset)?;
-            } None => {
+            }
+            None => {
                 writer.write_bit(false)?;
             }
         }
@@ -1264,9 +1269,9 @@ mod tests {
     use scuffle_bytes_util::{BitReader, BitWriter};
     use scuffle_expgolomb::BitWriterExpGolombExt;
 
-    use crate::{sps::{ChromaSampleLoc, Sps}, ColorConfig};
-
     use super::TimingInfo;
+    use crate::ColorConfig;
+    use crate::sps::{ChromaSampleLoc, Sps};
 
     #[test]
     fn test_parse_sps_insufficient_bytes_() {
@@ -2338,7 +2343,6 @@ mod tests {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
-
         let result = Sps::parse(&sps).unwrap();
     }
 
@@ -2346,7 +2350,6 @@ mod tests {
     fn test_build_sps_ext() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
-
 
         let result = Sps::parse(&sps).unwrap();
     }
@@ -2356,7 +2359,6 @@ mod tests {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
-
         let result = Sps::parse(&sps).unwrap();
     }
 
@@ -2365,7 +2367,6 @@ mod tests {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
 
-
         let result = Sps::parse(&sps).unwrap();
     }
 
@@ -2373,7 +2374,6 @@ mod tests {
     fn test_build_sar() {
         let mut sps = Vec::new();
         let mut writer = BitWriter::new(&mut sps);
-
 
         let result = Sps::parse(&sps).unwrap();
     }
