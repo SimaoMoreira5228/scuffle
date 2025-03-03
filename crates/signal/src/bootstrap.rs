@@ -13,10 +13,10 @@ pub trait SignalConfig: Global {
     /// The signals to listen for.
     ///
     /// By default, listens for `SIGTERM` and `SIGINT`.
-    fn signals(&self) -> Vec<tokio::signal::unix::SignalKind> {
+    fn signals(&self) -> Vec<crate::SignalKind> {
         vec![
-            tokio::signal::unix::SignalKind::terminate(),
-            tokio::signal::unix::SignalKind::interrupt(),
+            crate::SignalKind::Unix(tokio::signal::unix::SignalKind::terminate()),
+            crate::SignalKind::Unix(tokio::signal::unix::SignalKind::interrupt()),
         ]
     }
 
@@ -33,7 +33,7 @@ pub trait SignalConfig: Global {
     /// Called when the service is force shutting down.
     fn on_force_shutdown(
         &self,
-        signal: Option<tokio::signal::unix::SignalKind>,
+        signal: Option<crate::SignalKind>,
     ) -> impl std::future::Future<Output = anyhow::Result<()>> + Send {
         let err = if let Some(signal) = signal {
             anyhow::anyhow!("received signal, shutting down immediately: {:?}", signal)
@@ -117,7 +117,7 @@ mod tests {
 
         match result.with_timeout(tokio::time::Duration::from_millis(100)).await {
             Ok(Ok(Err(e))) => {
-                assert_eq!(e.to_string(), "received signal, shutting down immediately: SignalKind(2)");
+                assert_eq!(e.to_string(), "received signal, shutting down immediately: Unix(SignalKind(2))");
             }
             _ => panic!("unexpected result"),
         }
@@ -197,7 +197,7 @@ mod tests {
     }
 
     impl SignalConfig for NoSignalsTestGlobal {
-        fn signals(&self) -> Vec<tokio::signal::unix::SignalKind> {
+        fn signals(&self) -> Vec<crate::SignalKind> {
             vec![]
         }
 
