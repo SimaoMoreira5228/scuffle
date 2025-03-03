@@ -3191,6 +3191,7 @@ dependencies = [
  "scuffle-workspace-hack",
  "tokio",
  "tokio-test",
+ "winapi",
 ]
 
 [[package]]

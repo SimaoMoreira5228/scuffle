@@ -58,13 +58,16 @@
 //!
 //! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
-#![cfg(unix)]
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 #[cfg(unix)]
-use tokio::signal::unix::{Signal as UnixSignal, SignalKind as UnixSignalKind};
+use tokio::signal::unix;
+
+#[cfg(unix)]
+pub use tokio::signal::unix::SignalKind as UnixSignalKind;
+
 #[cfg(windows)]
 use tokio::signal::windows;
 
@@ -81,33 +84,34 @@ pub enum SignalKind {
     #[cfg(windows)]
     Windows(WindowsSignalKind),
     #[cfg(unix)]
-    Unix(UnixSignalKind),
+    Unix(unix::SignalKind),
 }
 
 #[cfg(unix)]
-impl From<UnixSignalKind> for SignalKind {
-  fn from(value: UnixSignalKind) -> Self {
-    Self::Unix(value)
-  }
+impl From<unix::SignalKind> for SignalKind {
+    fn from(value: unix::SignalKind) -> Self {
+        Self::Unix(value)
+    }
 }
 
 #[cfg(unix)]
-impl PartialEq<UnixSignalKind> for SignalKind {
-    fn eq(&self, other: &UnixSignalKind) -> bool {
+impl PartialEq<unix::SignalKind> for SignalKind {
+    fn eq(&self, other: &unix::SignalKind) -> bool {
         match self {
+            Self::Interrupt => other == &unix::SignalKind::interrupt(),
+            Self::Terminate => other == &unix::SignalKind::terminate(),
             Self::Unix(kind) => kind == other,
-            _ => false,
         }
     }
 }
 
 #[cfg(windows)]
-enum WindowsSignalKind {
-  CtrlBreak,
-  CtrlC,
-  CtrlClose,
-  CtrlLogoff,
-  CtrlShutdown,
+pub enum WindowsSignalKind {
+    CtrlBreak,
+    CtrlC,
+    CtrlClose,
+    CtrlLogoff,
+    CtrlShutdown,
 }
 
 #[cfg(windows)]
@@ -121,17 +125,18 @@ enum WindowsSignalValue {
 
 #[cfg(windows)]
 impl From<WindowsSignalKind> for SignalKind {
-  fn from(value: WindowsSignalKind) -> Self {
-    Self::Windows(value)
-  }
+    fn from(value: WindowsSignalKind) -> Self {
+        Self::Windows(value)
+    }
 }
 
 #[cfg(windows)]
 impl PartialEq<WindowsSignalKind> for SignalKind {
     fn eq(&self, other: &WindowsSignalKind) -> bool {
         match self {
+            Self::Interrupt => other == &WindowsSignalKind::CtrlC,
+            Self::Terminate => other == &WindowsSignalKind::CtrlClose,
             Self::Windows(kind) => kind == other,
-            _ => false,
         }
     }
 }
@@ -150,7 +155,7 @@ impl SignalValue {
 }
 
 #[cfg(unix)]
-type Signal = UnixSignal;
+type Signal = unix::Signal;
 
 #[cfg(windows)]
 type Signal = SignalValue;
@@ -169,19 +174,47 @@ impl SignalKind {
     fn listen(&self) -> Result<Signal, std::io::Error> {
         match self {
             // https://learn.microsoft.com/en-us/windows/console/ctrl-c-and-ctrl-break-signals
-            Self::Interrupt => Ok(SignalValue::CtrlC(tokio::signal::windows::ctrl_c()?)),
+            Self::Interrupt | Self::Windows(WindowsSignalKind::CtrlC) => {
+                Ok(SignalValue::CtrlC(tokio::signal::windows::ctrl_c()?))
+            }
             // https://learn.microsoft.com/en-us/windows/console/ctrl-close-signal
-            Self::Terminate => Ok(SignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?)),
-            Self::Windows(kind) => match kind {
-                WindowsSignalKind::CtrlBreak => Ok(SignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?)),
-                WindowsSignalKind::CtrlC => Ok(SignalValue::CtrlC(tokio::signal::windows::ctrl_c()?)),
-                WindowsSignalKind::CtrlClose => Ok(SignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?)),
-                WindowsSignalKind::CtrlLogoff => Ok(SignalValue::CtrlLogoff(tokio::signal::windows::ctrl_logoff()?)),
-                WindowsSignalKind::CtrlShutdown => Ok(SignalValue::CtrlShutdown(tokio::signal::windows::ctrl_shutdown()?)),
-            },
+            Self::Terminate | Self::Windows(WindowsSignalKind::CtrlClose) => {
+                Ok(SignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?))
+            }
+            Self::Windows(WindowsSignalKind::CtrlBreak) => Ok(SignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?)),
+            Self::Windows(WindowsSignalKind::CtrlLogoff) => {
+                Ok(SignalValue::CtrlLogoff(tokio::signal::windows::ctrl_logoff()?))
+            }
+            Self::Windows(WindowsSignalKind::CtrlShutdown) => {
+                Ok(SignalValue::CtrlShutdown(tokio::signal::windows::ctrl_shutdown()?))
+            }
         }
     }
 
+    #[cfg(unix)]
+    fn as_raw_value(&self) -> i32 {
+        match self {
+            Self::Interrupt => libc::SIGINT,
+            Self::Terminate => libc::SIGTERM,
+            Self::Unix(kind) => kind.as_raw_value(),
+        }
+    }
+
+    #[cfg(windows)]
+    fn as_raw_value(&self) -> i32 {
+        match self {
+            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_C_EVENT.html
+            Self::Interrupt | Self::Windows(WindowsSignalKind::CtrlC) => 0,
+            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_CLOSE_EVENT.html
+            Self::Terminate | Self::Windows(WindowsSignalKind::CtrlClose) => 2,
+            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_BREAK_EVENT.html
+            Self::Windows(WindowsSignalKind::CtrlBreak) => 1,
+            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_LOGOFF_EVENT.html
+            Self::Windows(WindowsSignalKind::CtrlLogoff) => 5,
+            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_SHUTDOWN_EVENT.html
+            Self::Windows(WindowsSignalKind::CtrlShutdown) => 6,
+        }
+    }
 }
 
 /// A handler for listening to multiple signals, and providing a future for
@@ -326,37 +359,45 @@ mod tests {
 
     use super::*;
 
-    pub fn raise_signal(kind: UnixSignalKind) {
+    pub fn raise_signal(kind: SignalKind) {
         // Safety: This is a test, and we control the process.
+        #[cfg(unix)]
         unsafe {
             libc::raise(kind.as_raw_value());
+        }
+
+        #[cfg(windows)]
+        unsafe {
+            use winapi::um::winconGenerateConsoleCtrlEvent;
+
+            GenerateConsoleCtrlEvent(kind.as_raw_value(), 0);
         }
     }
 
     #[cfg(not(valgrind))] // test is time-sensitive
     #[tokio::test]
     async fn signal_handler() {
-        let mut handler = SignalHandler::with_signals([UnixSignalKind::user_defined1()])
-            .with_signal(UnixSignalKind::user_defined2())
-            .with_signal(UnixSignalKind::user_defined1());
+        let mut handler = SignalHandler::with_signals([unix::SignalKind::user_defined1()])
+            .with_signal(unix::SignalKind::user_defined2())
+            .with_signal(unix::SignalKind::user_defined1());
 
-        raise_signal(UnixSignalKind::user_defined1());
+        raise_signal(SignalKind::Unix(unix::SignalKind::user_defined1()));
 
         let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
 
-        assert_eq!(recv, SignalKind::Unix(UnixSignalKind::user_defined1()), "expected SIGUSR1");
+        assert_eq!(recv, SignalKind::Unix(unix::SignalKind::user_defined1()), "expected SIGUSR1");
 
         // We already received the signal, so polling again should return Poll::Pending
         let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
 
         assert!(recv.is_err(), "expected timeout");
 
-        raise_signal(UnixSignalKind::user_defined2());
+        raise_signal(SignalKind::Unix(unix::SignalKind::user_defined2()));
 
         // We should be able to receive the signal again
         let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
 
-        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+        assert_eq!(recv, unix::SignalKind::user_defined2(), "expected SIGUSR2");
     }
 
     #[cfg(not(valgrind))] // test is time-sensitive
@@ -365,21 +406,21 @@ mod tests {
         let mut handler = SignalHandler::new();
 
         handler
-            .add_signal(UnixSignalKind::user_defined1())
-            .add_signal(UnixSignalKind::user_defined2())
-            .add_signal(UnixSignalKind::user_defined2());
+            .add_signal(unix::SignalKind::user_defined1())
+            .add_signal(unix::SignalKind::user_defined2())
+            .add_signal(unix::SignalKind::user_defined2());
 
-        raise_signal(UnixSignalKind::user_defined1());
-
-        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
-
-        assert_eq!(recv, UnixSignalKind::user_defined1(), "expected SIGUSR1");
-
-        raise_signal(UnixSignalKind::user_defined2());
+        raise_signal(SignalKind::Unix(unix::SignalKind::user_defined1()));
 
         let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
 
-        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+        assert_eq!(recv, unix::SignalKind::user_defined1(), "expected SIGUSR1");
+
+        raise_signal(SignalKind::Unix(unix::SignalKind::user_defined2()));
+
+        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+
+        assert_eq!(recv, unix::SignalKind::user_defined2(), "expected SIGUSR2");
     }
 
     #[cfg(not(valgrind))] // test is time-sensitive

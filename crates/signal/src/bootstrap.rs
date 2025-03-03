@@ -15,8 +15,8 @@ pub trait SignalConfig: Global {
     /// By default, listens for `SIGTERM` and `SIGINT`.
     fn signals(&self) -> Vec<crate::SignalKind> {
         vec![
-            crate::SignalKind::Unix(tokio::signal::unix::SignalKind::terminate()),
-            crate::SignalKind::Unix(tokio::signal::unix::SignalKind::interrupt()),
+            crate::SignalKind::Terminate,
+            crate::SignalKind::Interrupt,
         ]
     }
 
@@ -111,13 +111,13 @@ mod tests {
         // Wait for the service to start
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        raise_signal(tokio::signal::unix::SignalKind::interrupt());
+        raise_signal(crate::SignalKind::Interrupt);
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-        raise_signal(tokio::signal::unix::SignalKind::interrupt());
+        raise_signal(crate::SignalKind::Interrupt);
 
         match result.with_timeout(tokio::time::Duration::from_millis(100)).await {
             Ok(Ok(Err(e))) => {
-                assert_eq!(e.to_string(), "received signal, shutting down immediately: Unix(SignalKind(2))");
+                assert_eq!(e.to_string(), "received signal, shutting down immediately: Interrupt");
             }
             _ => panic!("unexpected result"),
         }
@@ -171,7 +171,7 @@ mod tests {
         // Wait for the service to start
         tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
 
-        raise_signal(tokio::signal::unix::SignalKind::interrupt());
+        raise_signal(crate::SignalKind::Interrupt);
         assert!(result.await.is_ok());
 
         assert!(
@@ -222,7 +222,7 @@ mod tests {
         // caught by the service
         let mut signal_handler = SignalHandler::new().with_signal(SignalKind::terminate());
 
-        raise_signal(tokio::signal::unix::SignalKind::terminate());
+        raise_signal(crate::SignalKind::Terminate);
 
         // Wait for a signal to be received
         assert_eq!(signal_handler.recv().await, SignalKind::terminate());
@@ -269,7 +269,7 @@ mod tests {
         // Wait for the service to start
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        raise_signal(tokio::signal::unix::SignalKind::terminate());
+        raise_signal(crate::SignalKind::Terminate);
 
         match result.with_timeout(tokio::time::Duration::from_millis(100)).await {
             Ok(Ok(Err(e))) => {
