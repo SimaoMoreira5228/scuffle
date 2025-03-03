@@ -76,6 +76,11 @@ mod bootstrap;
 pub use bootstrap::{SignalConfig, SignalSvc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The kind of signal to listen for.
+/// The `Interrupt` maps to `SIGINT` on Unix, and `Ctrl-C` on Windows.
+/// The `Terminate` maps to `SIGTERM` on Unix, and `Ctrl-Close` on Windows.
+/// The `Unix` and `Windows` are plataform specific signals. `Unix` maps to
+/// `UnixSignalKind`, and `Windows` maps to `WindowsSignalKind`.
 pub enum SignalKind {
     Interrupt,
     Terminate,
@@ -88,7 +93,11 @@ pub enum SignalKind {
 #[cfg(unix)]
 impl From<UnixSignalKind> for SignalKind {
     fn from(value: UnixSignalKind) -> Self {
-        Self::Unix(value)
+        match value {
+            kind if kind == UnixSignalKind::interrupt() => Self::Interrupt,
+            kind if kind == UnixSignalKind::terminate() => Self::Terminate,
+            kind => Self::Unix(kind),
+        }
     }
 }
 
@@ -124,7 +133,13 @@ enum WindowsSignalValue {
 #[cfg(windows)]
 impl From<WindowsSignalKind> for SignalKind {
     fn from(value: WindowsSignalKind) -> Self {
-        Self::Windows(value)
+        match value {
+            WindowsSignalKind::CtrlC => Self::Interrupt,
+            WindowsSignalKind::CtrlClose => Self::Terminate,
+            WindowsSignalKind::CtrlBreak => Self::Windows(value),
+            WindowsSignalKind::CtrlLogoff => Self::Windows(value),
+            WindowsSignalKind::CtrlShutdown => Self::Windows(value),
+        }
     }
 }
 
@@ -158,6 +173,11 @@ type Signal = unix::Signal;
 #[cfg(windows)]
 type Signal = SignalValue;
 
+#[cfg(unix)]
+type OsSignalKind = UnixSignalKind;
+#[cfg(windows)]
+type OsSignalKind = WindowsSignalKind;
+
 impl SignalKind {
     #[cfg(unix)]
     fn listen(&self) -> Result<Signal, std::io::Error> {
@@ -189,28 +209,21 @@ impl SignalKind {
         }
     }
 
-    #[cfg(all(unix, test))]
-    fn as_raw_value(&self) -> i32 {
+    #[cfg(unix)]
+    fn into_os(&self) -> OsSignalKind {
         match self {
-            Self::Interrupt => libc::SIGINT,
-            Self::Terminate => libc::SIGTERM,
-            Self::Unix(kind) => kind.as_raw_value(),
+            Self::Interrupt => UnixSignalKind::interrupt(),
+            Self::Terminate => UnixSignalKind::terminate(),
+            Self::Unix(kind) => *kind,
         }
     }
 
-    #[cfg(all(windows, test))]
-    fn as_raw_value(&self) -> i32 {
+    #[cfg(windows)]
+    fn into_os(&self) -> OsSignalKind {
         match self {
-            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_C_EVENT.html
-            Self::Interrupt | Self::Windows(WindowsSignalKind::CtrlC) => 0,
-            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_CLOSE_EVENT.html
-            Self::Terminate | Self::Windows(WindowsSignalKind::CtrlClose) => 2,
-            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_BREAK_EVENT.html
-            Self::Windows(WindowsSignalKind::CtrlBreak) => 1,
-            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_LOGOFF_EVENT.html
-            Self::Windows(WindowsSignalKind::CtrlLogoff) => 5,
-            // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_SHUTDOWN_EVENT.html
-            Self::Windows(WindowsSignalKind::CtrlShutdown) => 6,
+            Self::Interrupt => WindowsSignalKind::CtrlC,
+            Self::Terminate => WindowsSignalKind::CtrlClose,
+            Self::Windows(kind) => *kind,
         }
     }
 }
@@ -361,16 +374,27 @@ mod tests {
     pub fn raise_signal(kind: SignalKind) {
         // Safety: This is a test, and we control the process.
         unsafe {
-            libc::raise(kind.as_raw_value());
+            libc::raise(kind.into_os().as_raw_value());
         }
     }
 
     #[cfg(windows)]
     pub fn raise_signal(kind: SignalKind) {
+        // Safety: This is a test, and we control the process.
         unsafe {
-            use winapi::um::winconGenerateConsoleCtrlEvent;
+            // only accepts CtrlC and CtrlBreak
+            use winapi::um::wincon::GenerateConsoleCtrlEvent;
 
-            GenerateConsoleCtrlEvent(kind.as_raw_value(), 0);
+            match kind {
+                SignalKind::Interrupt => winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0),
+                SignalKind::Windows(WindowsSignalKind::CtrlBreak) => {
+                    winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, 0)
+                }
+                SignalKind::Windows(WindowsSignalKind::CtrlC) => {
+                    winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
+                }
+                _ => panic!("unsupported signal"),
+            }
         }
     }
 
@@ -400,6 +424,29 @@ mod tests {
         assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
     }
 
+    #[cfg(all(not(valgrind), windows))]
+    #[tokio::test]
+    async fn signal_handler() {
+        let mut handler = SignalHandler::with_signals([WindowsSignalKind::CtrlC])
+            .with_signal(WindowsSignalKind::CtrlBreak)
+            .with_signal(WindowsSignalKind::CtrlC);
+
+        raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlC));
+
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+
+        assert_eq!(recv, WindowsSignalKind::CtrlC, "expected CtrlC");
+
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
+        assert!(recv.is_err(), "expected timeout");
+
+        raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlBreak));
+
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+
+        assert_eq!(recv, WindowsSignalKind::CtrlBreak, "expected CtrlBreak");
+    }
+
     #[cfg(all(not(valgrind), unix))] // test is time-sensitive
     #[tokio::test]
     async fn add_signal() {
@@ -421,6 +468,29 @@ mod tests {
         let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
 
         assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+    }
+
+    #[cfg(all(not(valgrind), windows))]
+    #[tokio::test]
+    async fn add_signal() {
+        let mut handler = SignalHandler::new();
+
+        handler
+            .add_signal(WindowsSignalKind::CtrlC)
+            .add_signal(WindowsSignalKind::CtrlBreak)
+            .add_signal(WindowsSignalKind::CtrlC);
+
+        raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlC));
+
+        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+
+        assert_eq!(recv, WindowsSignalKind::CtrlC, "expected CtrlC");
+
+        raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlBreak));
+
+        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+
+        assert_eq!(recv, WindowsSignalKind::CtrlBreak, "expected CtrlBreak");
     }
 
     #[cfg(not(valgrind))] // test is time-sensitive
