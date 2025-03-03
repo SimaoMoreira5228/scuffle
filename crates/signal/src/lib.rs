@@ -189,8 +189,7 @@ impl SignalKind {
         }
     }
 
-    #[cfg(unix)]
-    #[cfg(test)]
+    #[cfg(all(unix, test))]
     fn as_raw_value(&self) -> i32 {
         match self {
             Self::Interrupt => libc::SIGINT,
@@ -199,8 +198,7 @@ impl SignalKind {
         }
     }
 
-    #[cfg(windows)]
-    #[cfg(test)]
+    #[cfg(all(windows, test))]
     fn as_raw_value(&self) -> i32 {
         match self {
             // https://docs.rs/winapi/latest/winapi/um/wincon/constant.CTRL_C_EVENT.html
