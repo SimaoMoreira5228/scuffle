@@ -14,10 +14,7 @@ pub trait SignalConfig: Global {
     ///
     /// By default, listens for `SIGTERM` and `SIGINT`.
     fn signals(&self) -> Vec<crate::SignalKind> {
-        vec![
-            crate::SignalKind::Terminate,
-            crate::SignalKind::Interrupt,
-        ]
+        vec![crate::SignalKind::Terminate, crate::SignalKind::Interrupt]
     }
 
     /// The timeout before forcing a shutdown.

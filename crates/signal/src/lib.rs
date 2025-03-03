@@ -64,10 +64,8 @@ use std::task::{Context, Poll};
 
 #[cfg(unix)]
 use tokio::signal::unix;
-
 #[cfg(unix)]
 pub use tokio::signal::unix::SignalKind as UnixSignalKind;
-
 #[cfg(windows)]
 use tokio::signal::windows;
 
