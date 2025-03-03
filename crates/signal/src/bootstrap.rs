@@ -87,7 +87,6 @@ mod tests {
     use scuffle_bootstrap::Service;
     use scuffle_bootstrap::global::GlobalWithoutConfig;
     use scuffle_future_ext::FutureExt;
-    use tokio::signal::unix::SignalKind;
 
     use super::{SignalConfig, SignalSvc};
     use crate::SignalHandler;
@@ -217,12 +216,12 @@ mod tests {
 
         // Make a new handler to catch the raised signal as it is expected to not be
         // caught by the service
-        let mut signal_handler = SignalHandler::new().with_signal(SignalKind::terminate());
+        let mut signal_handler = SignalHandler::new().with_signal(crate::SignalKind::Interrupt);
 
-        raise_signal(crate::SignalKind::Terminate);
+        raise_signal(crate::SignalKind::Interrupt);
 
         // Wait for a signal to be received
-        assert_eq!(signal_handler.recv().await, SignalKind::terminate());
+        assert_eq!(signal_handler.recv().await, crate::SignalKind::Interrupt);
 
         // Expected to timeout
         assert!(result.with_timeout(tokio::time::Duration::from_millis(100)).await.is_err());

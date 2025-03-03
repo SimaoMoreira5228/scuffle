@@ -113,21 +113,13 @@ impl PartialEq<UnixSignalKind> for SignalKind {
 }
 
 #[cfg(windows)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowsSignalKind {
     CtrlBreak,
     CtrlC,
     CtrlClose,
     CtrlLogoff,
     CtrlShutdown,
-}
-
-#[cfg(windows)]
-enum WindowsSignalValue {
-    CtrlBreak(tokio::signal::windows::CtrlBreak),
-    CtrlC(tokio::signal::windows::CtrlC),
-    CtrlClose(tokio::signal::windows::CtrlClose),
-    CtrlLogoff(tokio::signal::windows::CtrlLogoff),
-    CtrlShutdown(tokio::signal::windows::CtrlShutdown),
 }
 
 #[cfg(windows)]
@@ -155,8 +147,18 @@ impl PartialEq<WindowsSignalKind> for SignalKind {
 }
 
 #[cfg(windows)]
-impl SignalValue {
-    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+#[derive(Debug)]
+enum WindowsSignalValue {
+    CtrlBreak(tokio::signal::windows::CtrlBreak),
+    CtrlC(tokio::signal::windows::CtrlC),
+    CtrlClose(tokio::signal::windows::CtrlClose),
+    CtrlLogoff(tokio::signal::windows::CtrlLogoff),
+    CtrlShutdown(tokio::signal::windows::CtrlShutdown),
+}
+
+#[cfg(windows)]
+impl WindowsSignalValue {
+    fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<()>> {
         match self {
             Self::CtrlBreak(signal) => signal.poll_recv(cx),
             Self::CtrlC(signal) => signal.poll_recv(cx),
@@ -171,7 +173,7 @@ impl SignalValue {
 type Signal = unix::Signal;
 
 #[cfg(windows)]
-type Signal = SignalValue;
+type Signal = WindowsSignalValue;
 
 #[cfg(unix)]
 type OsSignalKind = UnixSignalKind;
@@ -193,18 +195,18 @@ impl SignalKind {
         match self {
             // https://learn.microsoft.com/en-us/windows/console/ctrl-c-and-ctrl-break-signals
             Self::Interrupt | Self::Windows(WindowsSignalKind::CtrlC) => {
-                Ok(SignalValue::CtrlC(tokio::signal::windows::ctrl_c()?))
+                Ok(WindowsSignalValue::CtrlC(tokio::signal::windows::ctrl_c()?))
             }
             // https://learn.microsoft.com/en-us/windows/console/ctrl-close-signal
             Self::Terminate | Self::Windows(WindowsSignalKind::CtrlClose) => {
-                Ok(SignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?))
+                Ok(WindowsSignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?))
             }
-            Self::Windows(WindowsSignalKind::CtrlBreak) => Ok(SignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?)),
+            Self::Windows(WindowsSignalKind::CtrlBreak) => Ok(WindowsSignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?)),
             Self::Windows(WindowsSignalKind::CtrlLogoff) => {
-                Ok(SignalValue::CtrlLogoff(tokio::signal::windows::ctrl_logoff()?))
+                Ok(WindowsSignalValue::CtrlLogoff(tokio::signal::windows::ctrl_logoff()?))
             }
             Self::Windows(WindowsSignalKind::CtrlShutdown) => {
-                Ok(SignalValue::CtrlShutdown(tokio::signal::windows::ctrl_shutdown()?))
+                Ok(WindowsSignalValue::CtrlShutdown(tokio::signal::windows::ctrl_shutdown()?))
             }
         }
     }
@@ -386,15 +388,15 @@ mod tests {
             use winapi::um::wincon::GenerateConsoleCtrlEvent;
 
             match kind {
-                SignalKind::Interrupt => winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0),
+                SignalKind::Interrupt => GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0),
                 SignalKind::Windows(WindowsSignalKind::CtrlBreak) => {
-                    winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, 0)
+                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, 0)
                 }
                 SignalKind::Windows(WindowsSignalKind::CtrlC) => {
-                    winconGenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
+                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
                 }
                 _ => panic!("unsupported signal"),
-            }
+            };
         }
     }
 
