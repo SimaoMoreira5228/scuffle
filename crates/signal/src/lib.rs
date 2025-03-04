@@ -207,7 +207,9 @@ impl SignalKind {
             Self::Terminate | Self::Windows(WindowsSignalKind::CtrlClose) => {
                 Ok(WindowsSignalValue::CtrlClose(tokio::signal::windows::ctrl_close()?))
             }
-            Self::Windows(WindowsSignalKind::CtrlBreak) => Ok(WindowsSignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?)),
+            Self::Windows(WindowsSignalKind::CtrlBreak) => {
+                Ok(WindowsSignalValue::CtrlBreak(tokio::signal::windows::ctrl_break()?))
+            }
             Self::Windows(WindowsSignalKind::CtrlLogoff) => {
                 Ok(WindowsSignalValue::CtrlLogoff(tokio::signal::windows::ctrl_logoff()?))
             }
@@ -394,12 +396,11 @@ mod tests {
             use winapi::um::wincon::GenerateConsoleCtrlEvent;
 
             match kind {
-                SignalKind::Interrupt => GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0),
+                SignalKind::Interrupt | SignalKind::Windows(WindowsSignalKind::CtrlC) => {
+                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
+                }
                 SignalKind::Windows(WindowsSignalKind::CtrlBreak) => {
                     GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, 0)
-                }
-                SignalKind::Windows(WindowsSignalKind::CtrlC) => {
-                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
                 }
                 _ => panic!("unsupported signal"),
             };
