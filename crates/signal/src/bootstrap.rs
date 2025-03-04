@@ -87,10 +87,7 @@ mod tests {
     use scuffle_bootstrap::Service;
     use scuffle_bootstrap::global::GlobalWithoutConfig;
     use scuffle_future_ext::FutureExt;
-
-    use super::{SignalConfig, SignalSvc};
-    use crate::SignalHandler;
-    use crate::tests::raise_signal;
+    use crate::{test::raise_signal, SignalConfig, SignalHandler, SignalSvc};
 
     async fn force_shutdown_two_signals<Global: GlobalWithoutConfig + SignalConfig>() {
         let (ctx, handler) = scuffle_context::Context::new();
@@ -265,7 +262,7 @@ mod tests {
         // Wait for the service to start
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        raise_signal(crate::SignalKind::Terminate);
+        raise_signal(crate::SignalKind::Interrupt);
 
         match result.with_timeout(tokio::time::Duration::from_millis(100)).await {
             Ok(Ok(Err(e))) => {

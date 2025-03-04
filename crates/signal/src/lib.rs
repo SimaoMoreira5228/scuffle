@@ -66,8 +66,6 @@ use std::task::{Context, Poll};
 use tokio::signal::unix;
 #[cfg(unix)]
 pub use tokio::signal::unix::SignalKind as UnixSignalKind;
-#[cfg(windows)]
-use tokio::signal::windows;
 
 #[cfg(feature = "bootstrap")]
 mod bootstrap;
@@ -181,11 +179,6 @@ type Signal = unix::Signal;
 #[cfg(windows)]
 type Signal = WindowsSignalValue;
 
-#[cfg(unix)]
-type OsSignalKind = UnixSignalKind;
-#[cfg(windows)]
-type OsSignalKind = WindowsSignalKind;
-
 impl SignalKind {
     #[cfg(unix)]
     fn listen(&self) -> Result<Signal, std::io::Error> {
@@ -216,24 +209,6 @@ impl SignalKind {
             Self::Windows(WindowsSignalKind::CtrlShutdown) => {
                 Ok(WindowsSignalValue::CtrlShutdown(tokio::signal::windows::ctrl_shutdown()?))
             }
-        }
-    }
-
-    #[cfg(unix)]
-    fn into_os(&self) -> OsSignalKind {
-        match self {
-            Self::Interrupt => UnixSignalKind::interrupt(),
-            Self::Terminate => UnixSignalKind::terminate(),
-            Self::Unix(kind) => *kind,
-        }
-    }
-
-    #[cfg(windows)]
-    fn into_os(&self) -> OsSignalKind {
-        match self {
-            Self::Interrupt => WindowsSignalKind::CtrlC,
-            Self::Terminate => WindowsSignalKind::CtrlClose,
-            Self::Windows(kind) => *kind,
         }
     }
 }
@@ -315,15 +290,7 @@ impl SignalHandler {
     ///
     /// If the signal is already in the handler, it will not be added again.
     pub fn with_signal(mut self, kind: impl Into<SignalKind>) -> Self {
-        let kind = kind.into();
-        if self.signals.iter().any(|(k, _)| k == &kind) {
-            return self;
-        }
-
-        let signal = kind.listen().expect("failed to create signal");
-
-        self.signals.push((kind, signal));
-
+        self.add_signal(kind);
         self
     }
 
@@ -331,6 +298,26 @@ impl SignalHandler {
     ///
     /// If the signal is already in the handler, it will not be added again.
     pub fn add_signal(&mut self, kind: impl Into<SignalKind>) -> &mut Self {
+        // Windows handles signals differently from unix.
+        // Windows signals are sent to a "console". Any process that is attached to the console will receive the signal.
+        // It happens that the test harness is attached to the same console as the test process, meaning that
+        // when we raise a signal it will be received by the harness and the test will cancel.
+        // This is a hack to get around that.
+        #[cfg(all(windows, test))]
+        {
+            static INIT: std::sync::Once = std::sync::Once::new();
+            INIT.call_once(|| {
+                // Safety: This is a test, and we control the process.
+                unsafe {
+                    windows::Win32::System::Console::FreeConsole().expect("failed to free console");
+                }
+                // Safety: This is a test, and we control the process.
+                unsafe {
+                    windows::Win32::System::Console::AllocConsole().expect("failed to allocate console");
+                }
+            });
+        }
+
         let kind = kind.into();
         if self.signals.iter().any(|(k, _)| k == &kind) {
             return self;
@@ -371,74 +358,50 @@ impl std::future::Future for SignalHandler {
     }
 }
 
+
 #[cfg(test)]
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
-mod tests {
+mod test {
     use std::time::Duration;
 
     use scuffle_future_ext::FutureExt;
 
-    use super::*;
+    use crate::{SignalHandler, SignalKind};
+
+    #[cfg(windows)]
+    pub fn raise_signal(kind: SignalKind) {
+        use crate::WindowsSignalKind;
+        use windows::Win32::System::Console::{CTRL_BREAK_EVENT, CTRL_C_EVENT, GenerateConsoleCtrlEvent};
+
+        // only accepts CtrlC and CtrlBreak
+        let event = match kind {
+            SignalKind::Interrupt | SignalKind::Windows(WindowsSignalKind::CtrlC) => CTRL_C_EVENT,
+            SignalKind::Windows(WindowsSignalKind::CtrlBreak) => CTRL_BREAK_EVENT,
+            _ => panic!("unsupported signal"),
+        };
+
+        unsafe {
+            GenerateConsoleCtrlEvent(event, 0).expect("failed to raise CtrlC");
+        }
+    }
 
     #[cfg(unix)]
     pub fn raise_signal(kind: SignalKind) {
         // Safety: This is a test, and we control the process.
         unsafe {
-            libc::raise(kind.into_os().as_raw_value());
+            libc::raise(match kind {
+                SignalKind::Interrupt => libc::SIGINT,
+                SignalKind::Terminate => libc::SIGTERM,
+                SignalKind::Unix(kind) => kind.as_raw_value(),
+            });
         }
     }
+
 
     #[cfg(windows)]
-    pub fn raise_signal(kind: SignalKind) {
-        // Safety: This is a test, and we control the process.
-        unsafe {
-            // only accepts CtrlC and CtrlBreak
-            use winapi::um::wincon::GenerateConsoleCtrlEvent;
-
-            match kind {
-                SignalKind::Interrupt | SignalKind::Windows(WindowsSignalKind::CtrlC) => {
-                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_C_EVENT, 0)
-                }
-                SignalKind::Windows(WindowsSignalKind::CtrlBreak) => {
-                    GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, 0)
-                }
-                _ => panic!("unsupported signal"),
-            };
-        }
-    }
-
-    #[cfg(all(not(valgrind), unix))] // test is time-sensitive
     #[tokio::test]
     async fn signal_handler() {
-        let mut handler = SignalHandler::with_signals([UnixSignalKind::user_defined1()])
-            .with_signal(UnixSignalKind::user_defined2())
-            .with_signal(UnixSignalKind::user_defined1());
-
-        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
-
-        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
-
-        assert_eq!(recv, SignalKind::Unix(UnixSignalKind::user_defined1()), "expected SIGUSR1");
-
-        // We already received the signal, so polling again should return Poll::Pending
-        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
-
-        assert!(recv.is_err(), "expected timeout");
-
-        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
-
-        // We should be able to receive the signal again
-        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
-
-        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
-    }
-
-    #[cfg(all(not(valgrind), windows))]
-    #[tokio::test]
-    async fn signal_handler() {
-        let mut handler = SignalHandler::with_signals([WindowsSignalKind::CtrlC])
-            .with_signal(WindowsSignalKind::CtrlBreak)
-            .with_signal(WindowsSignalKind::CtrlC);
+        let mut handler = SignalHandler::with_signals([WindowsSignalKind::CtrlC, WindowsSignalKind::CtrlBreak]);
 
         raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlC));
 
@@ -456,30 +419,7 @@ mod tests {
         assert_eq!(recv, WindowsSignalKind::CtrlBreak, "expected CtrlBreak");
     }
 
-    #[cfg(all(not(valgrind), unix))] // test is time-sensitive
-    #[tokio::test]
-    async fn add_signal() {
-        let mut handler = SignalHandler::new();
-
-        handler
-            .add_signal(UnixSignalKind::user_defined1())
-            .add_signal(UnixSignalKind::user_defined2())
-            .add_signal(UnixSignalKind::user_defined2());
-
-        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
-
-        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
-
-        assert_eq!(recv, UnixSignalKind::user_defined1(), "expected SIGUSR1");
-
-        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
-
-        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
-
-        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
-    }
-
-    #[cfg(all(not(valgrind), windows))]
+    #[cfg(windows)]
     #[tokio::test]
     async fn add_signal() {
         let mut handler = SignalHandler::new();
@@ -502,12 +442,65 @@ mod tests {
         assert_eq!(recv, WindowsSignalKind::CtrlBreak, "expected CtrlBreak");
     }
 
-    #[cfg(not(valgrind))] // test is time-sensitive
-    #[tokio::test]
-    async fn no_signals() {
-        let mut handler = SignalHandler::default();
+        #[cfg(all(not(valgrind), unix))] // test is time-sensitive
+        #[tokio::test]
+        async fn signal_handler() {
+            use crate::UnixSignalKind;
 
-        // Expected to timeout
-        assert!(handler.recv().with_timeout(Duration::from_millis(50)).await.is_err());
-    }
+            let mut handler = SignalHandler::with_signals([UnixSignalKind::user_defined1()])
+                .with_signal(UnixSignalKind::user_defined2())
+                .with_signal(UnixSignalKind::user_defined1());
+
+            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
+
+            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+
+            assert_eq!(recv, SignalKind::Unix(UnixSignalKind::user_defined1()), "expected SIGUSR1");
+
+            // We already received the signal, so polling again should return Poll::Pending
+            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
+
+            assert!(recv.is_err(), "expected timeout");
+
+            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
+
+            // We should be able to receive the signal again
+            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+
+            assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+        }
+
+        #[cfg(all(not(valgrind), unix))] // test is time-sensitive
+        #[tokio::test]
+        async fn add_signal() {
+            use crate::UnixSignalKind;
+
+            let mut handler = SignalHandler::new();
+
+            handler
+                .add_signal(UnixSignalKind::user_defined1())
+                .add_signal(UnixSignalKind::user_defined2())
+                .add_signal(UnixSignalKind::user_defined2());
+
+            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
+
+            let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+
+            assert_eq!(recv, UnixSignalKind::user_defined1(), "expected SIGUSR1");
+
+            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
+
+            let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+
+            assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+        }
+
+        #[cfg(not(valgrind))] // test is time-sensitive
+        #[tokio::test]
+        async fn no_signals() {
+            let mut handler = SignalHandler::default();
+
+            // Expected to timeout
+            assert!(handler.recv().with_timeout(Duration::from_millis(50)).await.is_err());
+        }
 }
