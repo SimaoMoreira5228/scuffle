@@ -75,17 +75,17 @@ mod bootstrap;
 #[cfg(feature = "bootstrap")]
 pub use bootstrap::{SignalConfig, SignalSvc};
 
+/// The type of signal to listen for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// The kind of signal to listen for.
-/// The `Interrupt` maps to `SIGINT` on Unix, and `Ctrl-C` on Windows.
-/// The `Terminate` maps to `SIGTERM` on Unix, and `Ctrl-Close` on Windows.
-/// The `Unix` and `Windows` are plataform specific signals. `Unix` maps to
-/// `UnixSignalKind`, and `Windows` maps to `WindowsSignalKind`.
 pub enum SignalKind {
+    /// Represents the interrupt signal, which is `SIGINT` on Unix and `Ctrl-C` on Windows.
     Interrupt,
+    /// Represents the terminate signal, which is `SIGTERM` on Unix and `Ctrl-Close` on Windows.
     Terminate,
+    /// Represents a Windows-specific signal kind, as defined in `WindowsSignalKind`.
     #[cfg(windows)]
     Windows(WindowsSignalKind),
+    /// Represents a Unix-specific signal kind, wrapping `tokio::signal::unix::SignalKind`.
     #[cfg(unix)]
     Unix(UnixSignalKind),
 }
@@ -112,13 +112,19 @@ impl PartialEq<UnixSignalKind> for SignalKind {
     }
 }
 
+/// Represents Windows-specific signal kinds.
 #[cfg(windows)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowsSignalKind {
+    /// Represents the `Ctrl-Break` signal.
     CtrlBreak,
+    /// Represents the `Ctrl-C` signal.
     CtrlC,
+    /// Represents the `Ctrl-Close` signal.
     CtrlClose,
+    /// Represents the `Ctrl-Logoff` signal.
     CtrlLogoff,
+    /// Represents the `Ctrl-Shutdown` signal.
     CtrlShutdown,
 }
 
