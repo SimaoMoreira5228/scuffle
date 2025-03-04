@@ -361,7 +361,6 @@ impl std::future::Future for SignalHandler {
     }
 }
 
-
 #[cfg(test)]
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 mod test {
@@ -373,8 +372,9 @@ mod test {
 
     #[cfg(windows)]
     pub fn raise_signal(kind: SignalKind) {
-        use crate::WindowsSignalKind;
         use windows::Win32::System::Console::{CTRL_BREAK_EVENT, CTRL_C_EVENT, GenerateConsoleCtrlEvent};
+
+        use crate::WindowsSignalKind;
 
         // only accepts CtrlC and CtrlBreak
         let event = match kind {
@@ -399,7 +399,6 @@ mod test {
             });
         }
     }
-
 
     #[cfg(windows)]
     #[tokio::test]
@@ -449,65 +448,65 @@ mod test {
         assert_eq!(recv, WindowsSignalKind::CtrlBreak, "expected CtrlBreak");
     }
 
-        #[cfg(all(not(valgrind), unix))] // test is time-sensitive
-        #[tokio::test]
-        async fn signal_handler() {
-            use crate::UnixSignalKind;
+    #[cfg(all(not(valgrind), unix))] // test is time-sensitive
+    #[tokio::test]
+    async fn signal_handler() {
+        use crate::UnixSignalKind;
 
-            let mut handler = SignalHandler::with_signals([UnixSignalKind::user_defined1()])
-                .with_signal(UnixSignalKind::user_defined2())
-                .with_signal(UnixSignalKind::user_defined1());
+        let mut handler = SignalHandler::with_signals([UnixSignalKind::user_defined1()])
+            .with_signal(UnixSignalKind::user_defined2())
+            .with_signal(UnixSignalKind::user_defined1());
 
-            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
+        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
 
-            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
 
-            assert_eq!(recv, SignalKind::Unix(UnixSignalKind::user_defined1()), "expected SIGUSR1");
+        assert_eq!(recv, SignalKind::Unix(UnixSignalKind::user_defined1()), "expected SIGUSR1");
 
-            // We already received the signal, so polling again should return Poll::Pending
-            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
+        // We already received the signal, so polling again should return Poll::Pending
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await;
 
-            assert!(recv.is_err(), "expected timeout");
+        assert!(recv.is_err(), "expected timeout");
 
-            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
+        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
 
-            // We should be able to receive the signal again
-            let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
+        // We should be able to receive the signal again
+        let recv = (&mut handler).with_timeout(Duration::from_millis(5)).await.unwrap();
 
-            assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
-        }
+        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+    }
 
-        #[cfg(all(not(valgrind), unix))] // test is time-sensitive
-        #[tokio::test]
-        async fn add_signal() {
-            use crate::UnixSignalKind;
+    #[cfg(all(not(valgrind), unix))] // test is time-sensitive
+    #[tokio::test]
+    async fn add_signal() {
+        use crate::UnixSignalKind;
 
-            let mut handler = SignalHandler::new();
+        let mut handler = SignalHandler::new();
 
-            handler
-                .add_signal(UnixSignalKind::user_defined1())
-                .add_signal(UnixSignalKind::user_defined2())
-                .add_signal(UnixSignalKind::user_defined2());
+        handler
+            .add_signal(UnixSignalKind::user_defined1())
+            .add_signal(UnixSignalKind::user_defined2())
+            .add_signal(UnixSignalKind::user_defined2());
 
-            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
+        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined1()));
 
-            let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
 
-            assert_eq!(recv, UnixSignalKind::user_defined1(), "expected SIGUSR1");
+        assert_eq!(recv, UnixSignalKind::user_defined1(), "expected SIGUSR1");
 
-            raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
+        raise_signal(SignalKind::Unix(UnixSignalKind::user_defined2()));
 
-            let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
+        let recv = handler.recv().with_timeout(Duration::from_millis(5)).await.unwrap();
 
-            assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
-        }
+        assert_eq!(recv, UnixSignalKind::user_defined2(), "expected SIGUSR2");
+    }
 
-        #[cfg(not(valgrind))] // test is time-sensitive
-        #[tokio::test]
-        async fn no_signals() {
-            let mut handler = SignalHandler::default();
+    #[cfg(not(valgrind))] // test is time-sensitive
+    #[tokio::test]
+    async fn no_signals() {
+        let mut handler = SignalHandler::default();
 
-            // Expected to timeout
-            assert!(handler.recv().with_timeout(Duration::from_millis(50)).await.is_err());
-        }
+        // Expected to timeout
+        assert!(handler.recv().with_timeout(Duration::from_millis(50)).await.is_err());
+    }
 }

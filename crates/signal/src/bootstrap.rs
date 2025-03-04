@@ -87,7 +87,9 @@ mod tests {
     use scuffle_bootstrap::Service;
     use scuffle_bootstrap::global::GlobalWithoutConfig;
     use scuffle_future_ext::FutureExt;
-    use crate::{test::raise_signal, SignalConfig, SignalHandler, SignalSvc};
+
+    use crate::test::raise_signal;
+    use crate::{SignalConfig, SignalHandler, SignalSvc};
 
     async fn force_shutdown_two_signals<Global: GlobalWithoutConfig + SignalConfig>() {
         let (ctx, handler) = scuffle_context::Context::new();
