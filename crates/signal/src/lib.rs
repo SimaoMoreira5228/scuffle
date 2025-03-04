@@ -227,6 +227,8 @@ impl SignalKind {
 /// # Example
 ///
 /// ```rust
+/// # #[cfg(unix)]
+/// # {
 /// use scuffle_signal::SignalHandler;
 /// use tokio::signal::unix::SignalKind;
 ///
@@ -256,6 +258,7 @@ impl SignalKind {
 ///     },
 /// }
 /// # });
+/// # }
 /// ```
 #[derive(Debug)]
 #[must_use = "signal handlers must be used to wait for signals"]
@@ -401,6 +404,8 @@ mod test {
     #[cfg(windows)]
     #[tokio::test]
     async fn signal_handler() {
+        use crate::WindowsSignalKind;
+
         let mut handler = SignalHandler::with_signals([WindowsSignalKind::CtrlC, WindowsSignalKind::CtrlBreak]);
 
         raise_signal(SignalKind::Windows(WindowsSignalKind::CtrlC));
@@ -422,6 +427,8 @@ mod test {
     #[cfg(windows)]
     #[tokio::test]
     async fn add_signal() {
+        use crate::WindowsSignalKind;
+
         let mut handler = SignalHandler::new();
 
         handler
