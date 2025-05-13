@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::io::Read;
-use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -11,7 +10,7 @@ use semver::Version;
 use crate::utils::{cargo_cmd, metadata};
 
 mod utils;
-use utils::{checkout_baseline, metadata_from_dir, workspace_crates_in_folder};
+use utils::{workspace_crates_in_folder};
 
 #[derive(Debug, Clone, Parser)]
 pub struct SemverChecks {
@@ -31,19 +30,11 @@ impl SemverChecks {
         let current_metadata = metadata().context("getting current metadata")?;
         let current_crates_set = workspace_crates_in_folder(&current_metadata, "crates");
 
-        let tmp_dir = PathBuf::from("target/semver-baseline");
-
-        // Checkout baseline (auto-cleanup on Drop)
-        let _worktree_cleanup = checkout_baseline(&self.baseline, &tmp_dir).context("checking out baseline")?;
-
-        let baseline_metadata = metadata_from_dir(&tmp_dir).context("getting baseline metadata")?;
-        let baseline_crates_set = workspace_crates_in_folder(&baseline_metadata, &tmp_dir.join("crates").to_string_lossy());
-
         let common_crates: HashSet<_> = current_metadata
             .packages
             .iter()
             .map(|p| p.name.clone())
-            .filter(|name| current_crates_set.contains(name) && baseline_crates_set.contains(name))
+            .filter(|name| current_crates_set.contains(name))
             .collect();
 
         let mut crates: Vec<_> = common_crates.iter().cloned().collect();
@@ -65,8 +56,6 @@ impl SemverChecks {
         let mut args = vec![
             "semver-checks",
             "check-release",
-            "--baseline-root",
-            tmp_dir.to_str().unwrap(),
             "--all-features",
         ];
 
