@@ -56,7 +56,19 @@ pub fn workspace_crates_in_folder(meta: &Metadata, folder: &str) -> HashSet<Stri
 pub fn is_published_on_crates_io(crate_name: &str) -> bool {
     let url = crate_index_url(crate_name);
 
-    reqwest::blocking::get(&url).map(|r| r.status().is_success()).unwrap_or(false)
+    let output = Command::new("curl")
+        .args(["-s", "--head", "-w", "%{http_code}", &url])
+        .output();
+
+    if let Err(e) = output {
+        eprintln!("Error checking crate on crates.io: {e}");
+        return false;
+    }
+
+    let output = output.unwrap();
+    let status_code = String::from_utf8_lossy(&output.stdout);
+
+    status_code.contains("200")
 }
 
 fn crate_index_url(crate_name: &str) -> String {
