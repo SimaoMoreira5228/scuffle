@@ -57,7 +57,7 @@ pub fn is_published_on_crates_io(crate_name: &str) -> bool {
     let url = crate_index_url(crate_name);
 
     let output = Command::new("curl")
-        .args(["-s", "--head", "-w", "%{http_code}", &url])
+        .args(["-s", "--head", "-L", "-w", "%{http_code}", &url])
         .output();
 
     if let Err(e) = output {
