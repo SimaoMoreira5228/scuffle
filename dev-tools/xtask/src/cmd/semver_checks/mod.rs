@@ -10,7 +10,7 @@ use semver::Version;
 use crate::utils::{cargo_cmd, metadata};
 
 mod utils;
-use utils::{workspace_crates_in_folder};
+use utils::workspace_crates_in_folder;
 
 #[derive(Debug, Clone, Parser)]
 pub struct SemverChecks {
@@ -33,8 +33,8 @@ impl SemverChecks {
         let common_crates: HashSet<_> = current_metadata
             .packages
             .iter()
+            .filter(|p| current_crates_set.contains(&p.name) && p.publish.is_none())
             .map(|p| p.name.clone())
-            .filter(|name| current_crates_set.contains(name))
             .collect();
 
         let mut crates: Vec<_> = common_crates.iter().cloned().collect();
@@ -53,11 +53,7 @@ impl SemverChecks {
             cargo_cmd().args(["hakari", "disable"]).status().context("disabling hakari")?;
         }
 
-        let mut args = vec![
-            "semver-checks",
-            "check-release",
-            "--all-features",
-        ];
+        let mut args = vec!["semver-checks", "check-release", "--all-features"];
 
         for package in &common_crates {
             args.push("--package");

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::Command;
 
-use cargo_metadata::{Metadata};
+use cargo_metadata::Metadata;
 
 pub struct WorktreeCleanup {
     path: PathBuf,
