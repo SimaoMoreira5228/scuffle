@@ -10,7 +10,7 @@ use semver::Version;
 use crate::utils::{cargo_cmd, metadata};
 
 mod utils;
-use utils::workspace_crates_in_folder;
+use utils::{is_published_on_crates_io, workspace_crates_in_folder};
 
 #[derive(Debug, Clone, Parser)]
 pub struct SemverChecks {
@@ -33,7 +33,7 @@ impl SemverChecks {
         let common_crates: HashSet<_> = current_metadata
             .packages
             .iter()
-            .filter(|p| current_crates_set.contains(&p.name) && p.publish.is_none())
+            .filter(|p| current_crates_set.contains(&p.name) && is_published_on_crates_io(&p.name))
             .map(|p| p.name.clone())
             .collect();
 

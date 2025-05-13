@@ -52,3 +52,26 @@ pub fn workspace_crates_in_folder(meta: &Metadata, folder: &str) -> HashSet<Stri
         .map(|p| p.name.clone())
         .collect()
 }
+
+pub fn is_published_on_crates_io(crate_name: &str) -> bool {
+    let url = crate_index_url(crate_name);
+
+    reqwest::blocking::get(&url).map(|r| r.status().is_success()).unwrap_or(false)
+}
+
+fn crate_index_url(crate_name: &str) -> String {
+    let name = crate_name.to_lowercase();
+    let len = name.len();
+
+    match len {
+        0 => panic!("Invalid crate name"),
+        1 => format!("https://index.crates.io/1/{name}"),
+        2 => format!("https://index.crates.io/2/{name}"),
+        3 => format!("https://index.crates.io/3/{}/{}", &name[0..1], name),
+        _ => {
+            let prefix = &name[0..2];
+            let suffix = &name[2..4];
+            format!("https://index.crates.io/{prefix}/{suffix}/{name}")
+        }
+    }
+}
