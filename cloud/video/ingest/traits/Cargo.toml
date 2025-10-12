@@ -1,0 +1,21 @@
+[package]
+name = "scufflecloud-ingest-traits"
+version = "0.1.0"
+authors = ["Scuffle <opensource@scuffle.cloud>"]
+edition = "2024"
+license = "AGPL-3.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[dependencies]
+rustls = { default-features = false, version = "0.23.21" }
+
+[package.metadata.sync-readme.badges]
+docs-rs = false
+crates-io = false
+license = true
+codecov = true

@@ -1,0 +1,17 @@
+bazel_dep(name = "rules_img", version = "0.2.6")
+
+pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
+
+pull(
+    name = "postgres18",
+    digest = "sha256:67a7c384da54fc55a3b5ad38e9853b76003603d12732c90af368b31bb1f2517f",
+    layer_handling = "lazy",
+    registry = "index.docker.io",
+    repository = "library/postgres",
+    tag = "18",
+)
+
+docker_configure = use_extension("//misc/toolchains/docker:extensions.bzl", "docker_configure")
+use_repo(docker_configure, "local_docker_config")
+
+register_toolchains("@local_docker_config//:all")

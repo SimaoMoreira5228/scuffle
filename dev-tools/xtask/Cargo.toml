@@ -1,24 +1,26 @@
 [package]
 name = "xtask"
-version = "0.1.0"
 edition = "2024"
-publish = false
 license = "MIT OR Apache-2.0"
-
-# This package is a special package as its used by developers to run commands in the workspace.
-# Therefore we should try to keep the dependencies to a minimum. If you need to add a command that is
-# particularly heavy that includes a lot of dependencies consider adding it to a separate specialized
-# package.
+publish = false
+readme = "README.md"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive", "env"] }
-cargo_metadata = "0.19.1"
 anyhow = "1.0"
+cargo-platform = "0.3"
+cargo_metadata = "0.23"
+chrono = "0.4"
+clap = { features = ["derive", "env"], version = "4.5.23" }
+fmtools = "0.1"
+hex = "0.4"
+home = "0.5"
+indent_write = "2.2.0"
+minijinja = "2"
+num_cpus = "1"
 serde = "1"
 serde_derive = "1"
 serde_json = "1.0"
-toml_edit = { version = "0.22", features = ["serde"] }
-regex = "1.11.1"
-os_pipe = "1.2.1"
-next_version = "0.2.24"
-semver = "1.0.26"
+sha2 = "0.10"
+toml_edit = { features = ["serde"], version = "0.23" }
+tracing = "0.1"
+tracing-subscriber = { features = ["env-filter"], version = "0.3" }

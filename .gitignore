@@ -1,10 +1,9 @@
 target/
 .vscode/
 !.vscode/extensions.json
-node_modules/
 .env*
+!.envrc
 *.log
-.DS_Store
 *.lcov
 lcov.info
 local/
@@ -12,9 +11,38 @@ coverage/
 benchmark.txt
 .aliases
 local.just
-!valgrind_suppressions.log
+.runner/
 
-# Docusaurus
-docs/build
-docs/.docusaurus
-docs/.cache-loader
+# Typescript / Javascript
+**/node_modules/
+**/.docusaurus
+**/.cache-loader
+**/.output
+**/.vercel
+**/.svelte-kit
+cloud/dashboard/build
+cloud/docs/build
+cloud/proto/ts/dist
+**/vite.config.js.timestamp-*
+
+# MacOS
+**/.DS_Store
+**/Thumbs.db
+
+# Env
+!cloud/dashboard/.env
+
+# Bazel
+target-bazel/
+.bazel_compact_execution_log
+rust-project.json
+.user.bazelrc
+.direnv/
+.rust-project.bazel.json
+MODULE.bazel.lock
+
+# Turbo
+.turbo/
+
+# diesel
+.diesel_lock

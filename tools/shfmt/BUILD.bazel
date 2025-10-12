@@ -1,0 +1,6 @@
+alias(
+    name = "shfmt",
+    actual = "@multitool//tools/shfmt",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

@@ -1,28 +1,57 @@
 [package]
 name = "postcompile"
-version = "0.2.0"
-edition = "2024"
-build = "build.rs"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.3.3"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
+build = "build.rs"
 documentation = "https://docs.rs/postcompile"
-license = "MIT OR Apache-2.0"
-description = "Helper crate for post-compiling Rust code."
+edition = "2024"
 keywords = ["postcompile", "snapshot", "test", "proc-macro"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Helper crate for post-compiling Rust code."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(trybuild_no_target)', 'cfg(postcompile_no_target)', 'cfg(coverage_nightly)', 'cfg(valgrind)'] }
 
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
 [dependencies]
-prettyplease = "0.2"
-syn = "2"
-toml = "0.8"
 cargo-manifest = "0.19"
-cargo_metadata = "0.19"
-target-triple = "0.1"
+cargo_metadata = "0.23"
+document-features = { optional = true, version = "0.2" }
+prettyplease = "0.2"
 regex = "1"
-scuffle-workspace-hack.workspace = true
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+syn = "2"
+target-triple = "0.1"
+toml = "0.9"
 
 [dev-dependencies]
-insta = "1.42.0"
+insta = "1"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

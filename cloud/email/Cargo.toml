@@ -1,0 +1,56 @@
+[package]
+name = "scufflecloud-email"
+version = "0.1.0"
+authors = ["Scuffle <opensource@scuffle.cloud>"]
+edition = "2024"
+license = "AGPL-3.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Email service for scuffle.cloud"
+
+[[bin]]
+name = "scufflecloud-email-standalone"
+path = "bin/standalone/main.rs"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+axum = "0.8"
+base64 = "0.22"
+email-traits = { path = "./traits", package = "scufflecloud-email-traits" }
+ext-traits = { path = "../ext-traits", package = "scufflecloud-ext-traits" }
+http = "1"
+mail-builder = "0.4"
+pb = { package = "scufflecloud-proto", path = "../proto" }
+prost = "0.14"
+reqsign = { version = "0.18", default-features = false, features = ["aws"] }
+reqwest = { features = ["rustls-tls-native-roots-no-provider"], version = "0.12", default-features = false }
+rustls = "0.23"
+scuffle-bootstrap = { path = "../../crates/bootstrap" }
+scuffle-bootstrap-telemetry = { features = ["opentelemetry-logs", "opentelemetry-traces"], path = "../../crates/bootstrap-telemetry" }
+scuffle-context = { path = "../../crates/context" }
+scuffle-http = { features = ["tracing", "tls-rustls"], path = "../../crates/http" }
+scuffle-settings = { features = ["all-formats", "bootstrap"], path = "../../crates/settings" }
+scuffle-signal = { features = ["bootstrap"], path = "../../crates/signal" }
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+smart-default = "0.7"
+thiserror = "2"
+tinc = { path = "../../crates/tinc" }
+tonic = "0.14"
+tonic-reflection = "0.14"
+tonic-types = "0.14"
+tower-http = { features = ["trace"], version = "0.6" }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[package.metadata.sync-readme.badges]
+docs-rs = false
+crates-io = false
+license = true
+codecov = true

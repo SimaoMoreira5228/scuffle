@@ -1,0 +1,54 @@
+load("//misc/utils/rust:manifest.bzl", "cargo_toml")
+load("//misc/utils/rust:package.bzl", "scuffle_package")
+
+cargo_toml()
+
+deps = [
+    "//crates/batching",
+    "//crates/bootstrap",
+    "//crates/bootstrap-telemetry",
+    "//crates/context",
+    "//crates/http",
+    "//crates/settings",
+    "//crates/signal",
+    "//crates/tinc",
+    "//cloud/ext-traits",
+    "//cloud/proto",
+    "//cloud/core/traits",
+    "//cloud/core/emails",
+    "//cloud/core/db-types",
+    "//cloud/core/cedar",
+    "//cloud/geo-ip",
+]
+
+aliases = {
+    "//cloud/ext-traits": "ext_traits",
+    "//cloud/proto": "pb",
+    "//cloud/geo-ip": "geo_ip",
+    "//cloud/core/emails": "core_emails",
+    "//cloud/core/traits": "core_traits",
+    "//cloud/core/db-types": "core_db_types",
+    "//cloud/core/cedar": "core_cedar",
+}
+
+scuffle_package(
+    aliases = aliases,
+    compile_data = [
+        "static_policies.cedar",
+        "static_policies.cedarschema",
+    ],
+    crate_name = "scufflecloud-core",
+    deps = deps,
+)
+
+scuffle_package(
+    name = "bin",
+    srcs = glob([
+        "bin/standalone/**/*.rs",
+    ]),
+    aliases = aliases,
+    crate_name = "scufflecloud-core-standalone",
+    crate_type = "bin",
+    readme = False,
+    deps = deps + [":core"],
+)

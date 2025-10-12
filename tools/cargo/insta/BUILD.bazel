@@ -1,0 +1,6 @@
+alias(
+    name = "insta",
+    actual = "@multitool//tools/cargo-insta",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

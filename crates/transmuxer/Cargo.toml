@@ -1,29 +1,56 @@
 [package]
 name = "scuffle-transmuxer"
-version = "0.2.0"
-edition = "2024"
-description = "A utility crate for transmuxing media streams."
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.2.2"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-transmuxer"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["transmuxer", "media", "streaming"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A utility crate for transmuxing media streams."
+
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
 
 [dependencies]
-byteorder = "1.5"
-bytes = "1.5"
-thiserror = "2.0.12"
+byteorder = "1"
+bytes = "1"
+thiserror = "2"
 
-scuffle-h264 = "0.2.0"
-scuffle-h265 = "0.2.0"
-scuffle-mp4 = "0.1.2"
-scuffle-aac = "0.1.2"
-scuffle-av1 = "0.1.2"
-scuffle-flv = "0.2.0"
-scuffle-bytes-util = "0.1.2"
-scuffle-workspace-hack.workspace = true
+document-features = { optional = true, version = "0.2" }
+scuffle-aac = { path = "../aac", version = "0.1" }
+scuffle-av1 = { path = "../av1", version = "0.1" }
+scuffle-bytes-util = { path = "../bytes-util", version = "0.1" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-flv = { path = "../flv", version = "0.2" }
+scuffle-h264 = { path = "../h264", version = "0.2" }
+scuffle-h265 = { path = "../h265", version = "0.2" }
+scuffle-mp4 = { path = "../mp4", version = "0.1" }
 
 [dev-dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { features = ["derive"], version = "1" }
+serde_json = "1"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+Annotations = "./annotations.proto"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

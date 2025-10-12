@@ -13,12 +13,10 @@ pub enum IncomingBodyError {
     /// An error that occurred while reading a hyper body.
     #[error("hyper error: {0}")]
     #[cfg(any(feature = "http1", feature = "http2"))]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "http1", feature = "http2"))))]
     Hyper(#[from] hyper::Error),
     /// An error that occurred while reading a h3 body.
     #[error("h3 body error: {0}")]
     #[cfg(feature = "http3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http3")))]
     H3(#[from] crate::backend::h3::body::H3BodyError),
 }
 
@@ -29,16 +27,13 @@ pub enum IncomingBodyError {
 pub enum IncomingBody {
     /// The body of an incoming hyper request.
     #[cfg(any(feature = "http1", feature = "http2"))]
-    #[cfg_attr(docsrs, doc(cfg(any(feature = "http1", feature = "http2"))))]
     Hyper(hyper::body::Incoming),
     /// The body of an incoming h3 request.
     #[cfg(feature = "http3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "http3")))]
     Quic(crate::backend::h3::body::QuicIncomingBody<h3_quinn::RecvStream>),
 }
 
 #[cfg(any(feature = "http1", feature = "http2"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "http1", feature = "http2"))))]
 impl From<hyper::body::Incoming> for IncomingBody {
     fn from(body: hyper::body::Incoming) -> Self {
         IncomingBody::Hyper(body)
@@ -46,7 +41,6 @@ impl From<hyper::body::Incoming> for IncomingBody {
 }
 
 #[cfg(feature = "http3")]
-#[cfg_attr(docsrs, doc(cfg(feature = "http3")))]
 impl From<crate::backend::h3::body::QuicIncomingBody<h3_quinn::RecvStream>> for IncomingBody {
     fn from(body: crate::backend::h3::body::QuicIncomingBody<h3_quinn::RecvStream>) -> Self {
         IncomingBody::Quic(body)
@@ -168,12 +162,11 @@ where
         match this.body.poll_frame(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(frame) => {
-                if let Some(Ok(frame)) = &frame {
-                    if let Some(data) = frame.data_ref() {
-                        if let Err(err) = this.tracker.on_data(data.remaining()) {
-                            return Poll::Ready(Some(Err(TrackedBodyError::Tracker(err))));
-                        }
-                    }
+                if let Some(Ok(frame)) = &frame
+                    && let Some(data) = frame.data_ref()
+                    && let Err(err) = this.tracker.on_data(data.remaining())
+                {
+                    return Poll::Ready(Some(Err(TrackedBodyError::Tracker(err))));
                 }
 
                 Poll::Ready(frame.transpose().map_err(TrackedBodyError::Body).transpose())

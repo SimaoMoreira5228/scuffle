@@ -1,23 +1,49 @@
 [package]
 name = "scuffle-av1"
-version = "0.1.2"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.1.4"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-av1"
-description = "AV1 codec header decoding & encoding."
+edition = "2024"
 keywords = ["av1", "header", "decoding", "encoding"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "AV1 codec header decoding & encoding."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
 [dependencies]
-bytes = "1.5"
-byteorder = "1.5"
-scuffle-bytes-util = "0.1.1"
-scuffle-workspace-hack.workspace = true
+byteorder = "1"
+bytes = "1"
+document-features = { optional = true, version = "0.2" }
+scuffle-bytes-util = { path = "../bytes-util", version = "0.1" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
 
 [dev-dependencies]
-insta = "1.42"
+insta = "1"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

@@ -1,19 +1,38 @@
+<!-- dprint-ignore-file -->
+<!-- sync-readme title [[ -->
 # tinc
+<!-- sync-readme ]] -->
 
 > [!WARNING]  
 > This crate is under active development and may not be stable.
 
-[![crates.io](https://img.shields.io/crates/v/tinc.svg)](https://crates.io/crates/tinc) [![docs.rs](https://img.shields.io/docsrs/tinc)](https://docs.rs/tinc)
+<!-- sync-readme badge [[ -->
+[![docs.rs](https://img.shields.io/docsrs/tinc/0.2.0.svg?logo=docs.rs&label=docs.rs&style=flat-square)](https://docs.rs/tinc/0.2.0)
+[![crates.io](https://img.shields.io/badge/crates.io-v0.2.0-orange?style=flat-square&logo=rust&logoColor=white)](https://crates.io/crates/tinc/0.2.0)
+![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-purple.svg?style=flat-square)
+![Crates.io Size](https://img.shields.io/crates/size/tinc/0.2.0.svg?style=flat-square)
+![Crates.io Downloads](https://img.shields.io/crates/dv/tinc/0.2.0.svg?&label=downloads&style=flat-square)
+[![Codecov](https://img.shields.io/codecov/c/github/scufflecloud/scuffle.svg?label=codecov&logo=codecov&style=flat-square)](https://app.codecov.io/gh/scufflecloud/scuffle)
+<!-- sync-readme ]] -->
 
 ---
 
+<!-- sync-readme rustdoc [[ -->
 Tinc is a GRPc to REST transcoder which generates axum routes for services defined in proto3 files.
 
-To use this crate check out [tinc-build](./build) refer to the [`annotations.proto`](./annotations.proto) for the schema definition.
+To use this crate check out [tinc-build](https://docs.rs/tinc_build) refer to the [`annotations.proto`](./annotations.proto)
 
-An example of this is the following:
+See the [changelog](./CHANGELOG.md) for a full release history.
 
-```protobuf
+### Feature flags
+
+* **`prost`** *(enabled by default)* —  Enables prost support
+* **`tonic`** *(enabled by default)* —  Enables tonic support
+* **`docs`** —  Enables changelog and documentation of feature flags
+
+### Examples
+
+````protobuf
 service SimpleService {
     rpc Ping(PingRequest) returns (PingResponse) {
         option (tinc.method).endpoint = {
@@ -32,11 +51,11 @@ message PingRequest {
 message PingResponse {
     string result = 1;
 }
-```
+````
 
-You can also change the serialization / deserialization of the messages in json by annotating stuff like 
+You can also change the serialization / deserialization of the messages in json by annotating stuff like
 
-```protobuf
+````protobuf
 message FlattenedMessage {
     SomeOtherMessage some_other = 1 [(tinc.field) = {
         flatten: true
@@ -67,12 +86,14 @@ message SomeOtherMessage2 {
     string state = 4;
     string zip_code = 5;
 }
-```
+````
 
-Tinc also has a fully customizable CEL-based expression system which allows you to validate inputs on both GRPc / REST. Similar to https://github.com/bufbuild/protovalidate. Except we compile the CEL-expressions directly into rust syntax and do not ship a interpreter for runtime.
+Tinc also has a fully customizable CEL-based expression system which allows you to validate inputs on both GRPc / REST. Similar to <https://github.com/bufbuild/protovalidate>.
+Except we compile the CEL-expressions directly into rust syntax and do not ship a interpreter for runtime.
 
 For example you can do something like this
-```protobuf
+
+````protobuf
 message TestRequest {
     string name = 1 [(tinc.field).constraint.string = {
         min_len: 1,
@@ -93,11 +114,11 @@ message TestRequest {
         }
     }];
 }
-```
+````
 
 Then every message that goes into your service handler will be validated and all validation errors will be returned to the user (either via json for http or protobuf for grpc)
 
-```json
+````json
 {
     "name": "troy",
     "things": {
@@ -105,11 +126,11 @@ Then every message that goes into your service handler will be validated and all
         "thing2": 42000
     }
 }
-```
+````
 
 returns this:
 
-```json
+````json
 {
   "code": 3,
   "details": {
@@ -128,11 +149,11 @@ returns this:
   },
   "message": "bad request"
 }
-```
+````
 
 The cel expressions can be extended to provide custom expressions:
 
-```protobuf
+````protobuf
 message TestRequest {
     // define a custom expression specifically for this field
     string name = 1 [(tinc.field).constraint.cel = {
@@ -155,10 +176,9 @@ message TestRequest {
     // apply said option to this field.
     string name = 1 [must_eq = "troy"];
 }
+````
 
-```
-
-```json
+````json
 {
   "code": 3,
   "details": {
@@ -173,22 +193,22 @@ message TestRequest {
   },
   "message": "bad request"
 }
-```
+````
 
-## What is supported
+### What is supported
 
-- [x] Endpoint path parameters with nested keys
-- [x] Mapped response bodies to a specific field
-- [x] Binary request/response bodies.
-- [x] Query string parsing
-- [x] Custom validation expressions, including validation on unary and streaming.
-- [x] OpenAPI 3.1 Spec Generation
-- [ ] Documentation
-- [ ] Tests
-- [ ] REST streaming
-- [ ] Multipart forms
+* [x] Endpoint path parameters with nested keys
+* [x] Mapped response bodies to a specific field
+* [x] Binary request/response bodies.
+* [x] Query string parsing
+* [x] Custom validation expressions, including validation on unary and streaming.
+* [x] OpenAPI 3.1 Spec Generation
+* [ ] Documentation
+* [ ] Tests
+* [ ] REST streaming
+* [ ] Multipart forms
 
-## Choices made
+### Choices made
 
 1. Use a custom proto definition for the proto schema instead of using [google predefined ones](https://github.com/googleapis/googleapis/blob/master/google/api/http.proto).
 
@@ -196,34 +216,29 @@ The reasoning is because we wanted to support additional features that google di
 
 2. Non-proto3-optional fields are required for JSON.
 
-If a field is not marked as `optional` then it is required by default and not providing it will result in an error returned during deserialization. You can opt-out of this behaviour using `[(tinc.field).json_omittable = TRUE]` which will make it so if the value is not provided it will use the default value (same behaviour as protobuf)`. The rationale behind this is from the way REST apis are typically used. Normally you provide all the fields you want and you do not have default values for rest APIs. So allowing fields to be defaulted may cause some issues related to people not providing required fields but the default value is a valid value for that field and then the endpoint misbehaves.
+If a field is not marked as `optional` then it is required by default and not providing it will result in an error returned during deserialization. You can opt-out of this behaviour using `[(tinc.field).json_omittable = TRUE]` which will make it so if the value is not provided it will use the default value (same behaviour as protobuf)\`. The rationale behind this is from the way REST apis are typically used. Normally you provide all the fields you want and you do not have default values for rest APIs. So allowing fields to be defaulted may cause some issues related to people not providing required fields but the default value is a valid value for that field and then the endpoint misbehaves.
 
 3. Stop on last error.
 
-Typically when using serde we stop on the first error. We believe that makes errors less valuable since we only ever get the first error that occurred in the stream instead of every error we had. There are some libraries that aim to solve this issue such as [`eserde`](https://lib.rs/crates/eserde) however we opted to build our solution fully custom since their's have quite a few drawbacks and we (at compile time) know the full structure since its defined in the protobuf schema, allowing us to generate better code for the deserialization process and store errors more effectively without introducing much/any runtime overhead.
+Typically when using serde we stop on the first error. We believe that makes errors less valuable since we only ever get the first error that occurred in the stream instead of every error we had. There are some libraries that aim to solve this issue such as [`eserde`](https://lib.rs/crates/eserde) however we opted to build our solution fully custom since their’s have quite a few drawbacks and we (at compile time) know the full structure since its defined in the protobuf schema, allowing us to generate better code for the deserialization process and store errors more effectively without introducing much/any runtime overhead.
 
-## Alternatives to this
+### Alternatives to this
 
-### 1. [GRPc-Gateway](https://grpc-ecosystem.github.io/grpc-gateway/)
+#### 1. [GRPc-Gateway](https://grpc-ecosystem.github.io/grpc-gateway/)
 
-GRPc-Gateway is the most popular way of converting from GRPc endpoint to rest endpoints using google's protoschema for doing so. The reason I dont like grpc-gateway stems from 2 things: 
+GRPc-Gateway is the most popular way of converting from GRPc endpoint to rest endpoints using google’s protoschema for doing so. The reason I dont like grpc-gateway stems from 2 things:
 
-1. grpc gateway requires a reverse proxy or external service which does the transcoding and then forwards you http requests. 
-2. You do not have any control over how the json is structured. It uses protobuf-json schema encoding.
+1. grpc gateway requires a reverse proxy or external service which does the transcoding and then forwards you http requests.
+1. You do not have any control over how the json is structured. It uses protobuf-json schema encoding.
 
-### 2. [GRPc-Web](https://github.com/grpc/grpc-web)
+#### 2. [GRPc-Web](https://github.com/grpc/grpc-web)
 
 GRPc-Web is a browser compatible version of the grpc spec. This is good for maintaining a single api across browsers / servers, but if you still want a rest API for your service it does not help with that.
 
-## Status
+### License
 
-This crate is currently under development and is not yet stable.
-
-Unit tests are not yet fully implemented. Use at your own risk.
-
-## License
-
-This project is licensed under the [MIT](./LICENSE.MIT) or [Apache-2.0](./LICENSE.Apache-2.0) license.
+This project is licensed under the MIT or Apache-2.0 license.
 You can choose between one of them if you use this work.
 
 `SPDX-License-Identifier: MIT OR Apache-2.0`
+<!-- sync-readme ]] -->

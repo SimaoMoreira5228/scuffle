@@ -1,0 +1,58 @@
+name: Cargo Update PR
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight
+
+jobs:
+  cargo-update:
+    name: Cargo Update PR
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-bazel
+        with:
+          build_buddy_token: ${{ secrets.build_buddy_token }}
+
+      - name: Update Cargo.lock
+        shell: bash
+        run: |
+          set -eo pipefail
+          cargo update --verbose 2>&1 | tee /tmp/cargo-update.log
+
+          echo "## Cargo update log" > /tmp/pr-body.txt
+          cat /tmp/cargo-update.log | .github/scripts/cargo-update-table.sh >> /tmp/pr-body.txt
+          cat /tmp/pr-body.txt > $GITHUB_STEP_SUMMARY
+
+      - name: Revendor
+        shell: bash
+        run: bazel run //vendor:cargo_vendor
+
+      - name: Check if anything changed
+        id: changed
+        run: |
+          result=$((git diff --exit-code > /dev/null && echo '0') || echo '1')
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: Create github PR
+        uses: peter-evans/create-pull-request@v7
+        if: ${{ steps.changed.outputs.result == 1 }}
+        with:
+          title: Automated update of Cargo.lock
+          body-path: /tmp/pr-body.txt
+          branch: automation/cargo-update
+          labels: dependencies,automated
+          commit-message: |
+            Automated update of Cargo.lock
+
+            Release triggered by ${{ github.event_name == 'schedule' && 'cron' || format('@{0}', github.actor) }}
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          reviewers: ${{ github.event_name != 'schedule' && github.actor || '' }}
+          sign-commits: true

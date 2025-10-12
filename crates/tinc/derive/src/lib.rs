@@ -1,8 +1,17 @@
+//! Derive Macro helpers for `tinc`
+//!
+//! ## License
+//!
+//! This project is licensed under the MIT or Apache-2.0 license.
+//! You can choose between one of them if you use this work.
+//!
+//! `SPDX-License-Identifier: MIT OR Apache-2.0`
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unreachable_pub)]
-
-//! Derive Macro helpers for `tinc`
+#![deny(clippy::mod_module_files)]
 
 use proc_macro::TokenStream;
 

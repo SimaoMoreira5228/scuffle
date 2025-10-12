@@ -1,0 +1,6 @@
+alias(
+    name = "dprint",
+    actual = "@multitool//tools/dprint",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

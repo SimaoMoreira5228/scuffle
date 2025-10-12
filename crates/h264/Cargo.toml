@@ -1,25 +1,51 @@
 [package]
 name = "scuffle-h264"
-version = "0.2.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.2.2"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-h264"
-description = "A pure Rust H.264 header decoder."
+edition = "2024"
 keywords = ["h264", "video", "codec"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A pure Rust H.264 header decoder."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
 [dependencies]
-bytes = "1.5"
-byteorder = "1.5"
-scuffle-expgolomb = "0.1.1"
-scuffle-bytes-util = "0.1.1"
-scuffle-workspace-hack.workspace = true
-nutype-enum = "0.1.2"
+byteorder = "1"
+bytes = "1"
+document-features = { optional = true, version = "0.2" }
+nutype-enum = { path = "../nutype-enum", version = "0.1" }
+scuffle-bytes-util = { path = "../bytes-util", version = "0.1" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-expgolomb = { path = "../expgolomb", version = "0.1" }
 
 [dev-dependencies]
-insta = "1.42"
+insta = "1"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

@@ -1,19 +1,36 @@
+<!-- dprint-ignore-file -->
+<!-- sync-readme title [[ -->
 # scuffle-bootstrap
+<!-- sync-readme ]] -->
 
 > [!WARNING]  
 > This crate is under active development and may not be stable.
 
-[![crates.io](https://img.shields.io/crates/v/scuffle-bootstrap.svg)](https://crates.io/crates/scuffle-bootstrap) [![docs.rs](https://img.shields.io/docsrs/scuffle-bootstrap)](https://docs.rs/scuffle-bootstrap)
+<!-- sync-readme badge [[ -->
+[![docs.rs](https://img.shields.io/docsrs/scuffle-bootstrap/0.1.7.svg?logo=docs.rs&label=docs.rs&style=flat-square)](https://docs.rs/scuffle-bootstrap/0.1.7)
+[![crates.io](https://img.shields.io/badge/crates.io-v0.1.7-orange?style=flat-square&logo=rust&logoColor=white)](https://crates.io/crates/scuffle-bootstrap/0.1.7)
+![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-purple.svg?style=flat-square)
+![Crates.io Size](https://img.shields.io/crates/size/scuffle-bootstrap/0.1.7.svg?style=flat-square)
+![Crates.io Downloads](https://img.shields.io/crates/dv/scuffle-bootstrap/0.1.7.svg?&label=downloads&style=flat-square)
+[![Codecov](https://img.shields.io/codecov/c/github/scufflecloud/scuffle.svg?label=codecov&logo=codecov&style=flat-square)](https://app.codecov.io/gh/scufflecloud/scuffle)
+<!-- sync-readme ]] -->
 
 ---
 
+<!-- sync-readme rustdoc [[ -->
 A utility crate for creating binaries.
 
-Refer to `Global`, `Service`, and `main` for more information.
+Refer to [`Global`](https://docs.rs/scuffle-bootstrap/0.1.7/scuffle_bootstrap/global/trait.Global.html), [`Service`](https://docs.rs/scuffle-bootstrap/0.1.7/scuffle_bootstrap/service/trait.Service.html), and [`main`](https://docs.rs/scuffle-bootstrap/0.1.7/scuffle_bootstrap/macro.main.html) for more information.
 
-## Usage
+See the [changelog](./CHANGELOG.md) for a full release history.
 
-```rust
+### Feature flags
+
+* **`docs`** —  Enables changelog and documentation of feature flags
+
+### Usage
+
+````rust,no_run
 use std::sync::Arc;
 
 /// Our global state
@@ -50,11 +67,12 @@ scuffle_bootstrap::main! {
         MySvc,
     }
 }
-```
+````
 
-## License
+### License
 
-This project is licensed under the [MIT](./LICENSE.MIT) or [Apache-2.0](./LICENSE.Apache-2.0) license.
+This project is licensed under the MIT or Apache-2.0 license.
 You can choose between one of them if you use this work.
 
 `SPDX-License-Identifier: MIT OR Apache-2.0`
+<!-- sync-readme ]] -->

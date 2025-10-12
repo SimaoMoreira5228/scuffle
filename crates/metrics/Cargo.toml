@@ -1,14 +1,14 @@
 [package]
 name = "scuffle-metrics"
-version = "0.2.0"
-edition = "2024"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.4.2"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-metrics"
-license = "MIT OR Apache-2.0"
-description = "Helper crate to instrument your code with metrics."
+edition = "2024"
 keywords = ["metrics", "prometheus", "opentelemetry"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Helper crate to instrument your code with metrics."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
@@ -23,36 +23,56 @@ name = "scuffle-metrics-prometheus"
 path = "examples/prometheus.rs"
 required-features = ["default"]
 
-[dependencies]
-prometheus-client = { version = "0.23", optional = true }
-opentelemetry = { version = "0.29", default-features = false, features = [
-    "metrics",
-] }
-opentelemetry_sdk = { version = "0.29", default-features = false, features = [
-    "metrics",
-] }
-scuffle-metrics-derive = "0.1.1"
-tracing = { version = "0.1", optional = true }
-parking_lot = "0.12"
-scuffle-workspace-hack.workspace = true
-
-[dev-dependencies]
-insta = "1.42.0"
-postcompile = "0.2.0"
-
-# For examples:
-tokio = { version = "1", features = ["full"] }
-opentelemetry-stdout = "0.29"
-
 [features]
 default = ["prometheus"]
-internal-logs = ["dep:tracing"]
+## Enables prometheus support
 prometheus = ["dep:prometheus-client"]
-tracing = ["internal-logs", "dep:tracing"]
+## Enables tracing support
+tracing = ["dep:tracing"]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
+[dependencies]
+document-features = { optional = true, version = "0.2" }
+opentelemetry = { default-features = false, features = ["metrics"], version = "0.31" }
+opentelemetry_sdk = { default-features = false, features = ["experimental_metrics_custom_reader", "metrics"], version = "0.31" }
+parking_lot = "0.12"
+prometheus-client = { optional = true, version = "0.24" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-metrics-derive = { path = "derive", version = "=0.4.2" }
+tracing = { optional = true, version = "0.1" }
+
+[dev-dependencies]
+insta = "1"
+postcompile = { path = "../postcompile" }
+
+# For examples:
+opentelemetry-stdout = "0.31"
+tokio = { features = ["full"], version = "1" }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
 
 [package.metadata.xtask.powerset]
-additive-features = ["prometheus", "tracing", "internal-logs", "default"]
+additive-features = [
+    "prometheus",
+    "tracing",
+    "internal-logs",
+    "default",
+    "docs",
+]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

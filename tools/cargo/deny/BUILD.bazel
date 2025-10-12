@@ -1,0 +1,6 @@
+alias(
+    name = "deny",
+    actual = "@multitool//tools/cargo-deny",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

@@ -1,14 +1,31 @@
 [workspace]
-
 members = [
+    "cloud/core",
+    "cloud/core/cedar",
+    "cloud/core/db-types",
+    "cloud/core/emails",
+    "cloud/core/traits",
+    "cloud/email",
+    "cloud/email/traits",
+    "cloud/ext-traits",
+    "cloud/geo-ip",
+    "cloud/id",
+    "cloud/proto",
+    "cloud/video/api",
+    "cloud/video/api/traits",
+    "cloud/video/ingest",
+    "cloud/video/ingest/traits",
     "crates/aac",
     "crates/amf0",
     "crates/av1",
     "crates/batching",
     "crates/bootstrap",
+    "crates/bootstrap-telemetry",
     "crates/bootstrap/derive",
-    "crates/bootstrap/telemetry",
     "crates/bytes-util",
+    "crates/cedar-policy",
+    "crates/cedar-policy/codegen",
+    "crates/changelog",
     "crates/context",
     "crates/expgolomb",
     "crates/ffmpeg",
@@ -20,65 +37,71 @@ members = [
     "crates/metrics",
     "crates/metrics/derive",
     "crates/mp4",
-    "crates/nutype_enum",
+    "crates/nutype-enum",
+    "crates/openapiv3_1",
     "crates/postcompile",
     "crates/pprof",
     "crates/rtmp",
     "crates/settings",
     "crates/signal",
-    "crates/transmuxer",
-    "crates/workspace-hack",
-    "dev-tools/xtask",
     "crates/tinc",
-    "crates/tinc/cel",
-    "crates/tinc/pb-prost",
     "crates/tinc/build",
+    "crates/tinc/cel",
     "crates/tinc/derive",
     "crates/tinc/integration",
-    "crates/openapiv3_1",
+    "crates/tinc/pb-prost",
+    "crates/transmuxer",
+    "dev-tools/xtask",
+    "misc/utils/protobuf/file_concat",
+    "misc/utils/rust/analyzer/check",
+    "misc/utils/rust/analyzer/discover",
+    "misc/utils/rust/clippy",
+    "misc/utils/rust/diesel_migration/copy",
+    "misc/utils/rust/diesel_migration/patcher",
+    "misc/utils/rust/diesel_migration/runner",
+    "misc/utils/rust/diesel_migration/test",
+    "misc/utils/rust/doc/merger",
+    "misc/utils/rust/doc/test/builder",
+    "misc/utils/rust/doc/test/common",
+    "misc/utils/rust/doc/test/runner",
+    "misc/utils/rust/doc/wrapper",
+    "misc/utils/rust/sync_readme",
+    "misc/utils/rust/sync_readme/common",
+    "misc/utils/rust/sync_readme/test_runner",
+    "misc/utils/rust/test_runner",
+    "tools/cargo/clippy",
+    "tools/cargo/sync-readme",
 ]
 
-resolver = "2"
+resolver = "3"
 
-[workspace.dependencies]
-scuffle-workspace-hack = { version = "0.1.0" }
+[workspace.metadata.xtask.release.packages]
+tinc = "0.2.0"
+tinc-build = "0.2.0"
+tinc-cel = "0.2.0"
+tinc-derive = "0.2.0"
+tinc-pb-prost = "0.2.0"
+postcompile = "0.3.3"
+scuffle-batching = "0.1.6"
+scuffle-bootstrap = "0.1.7"
+scuffle-bootstrap-derive = "0.1.7"
+scuffle-bootstrap-telemetry = "0.3.0"
+scuffle-changelog = "0.1.1"
+scuffle-ffmpeg = "0.3.5"
+scuffle-metrics = "0.4.2"
+scuffle-metrics-derive = "0.4.2"
+scuffle-pprof = "0.2.0"
+scuffle-amf0 = "0.2.4"
+scuffle-mp4 = "0.1.5"
+scuffle-bytes-util = "0.1.5"
+scuffle-expgolomb = "0.1.5"
 
-
-[profile.release-debug]
-inherits = "release"
-debug = true
+[profile.dev.package."*"]
+opt-level = 3
 
 [patch.crates-io]
-scuffle-workspace-hack.path = "crates/workspace-hack"
-scuffle-aac.path = "crates/aac"
-scuffle-amf0.path = "crates/amf0"
-scuffle-av1.path = "crates/av1"
-scuffle-batching.path = "crates/batching"
-scuffle-bootstrap.path = "crates/bootstrap"
-scuffle-bootstrap-derive.path = "crates/bootstrap/derive"
-scuffle-bootstrap-telemetry.path = "crates/bootstrap/telemetry"
-scuffle-bytes-util.path = "crates/bytes-util"
-scuffle-context.path = "crates/context"
-scuffle-expgolomb.path = "crates/expgolomb"
-scuffle-ffmpeg.path = "crates/ffmpeg"
-scuffle-flv.path = "crates/flv"
-scuffle-future-ext.path = "crates/future-ext"
-scuffle-http.path = "crates/http"
-scuffle-metrics.path = "crates/metrics"
-scuffle-metrics-derive.path = "crates/metrics/derive"
-postcompile.path = "crates/postcompile"
-scuffle-pprof.path = "crates/pprof"
-scuffle-settings.path = "crates/settings"
-scuffle-signal.path = "crates/signal"
-nutype-enum.path = "crates/nutype_enum"
-scuffle-h264.path = "crates/h264"
-scuffle-h265.path = "crates/h265"
-scuffle-mp4.path = "crates/mp4"
-scuffle-rtmp.path = "crates/rtmp"
-scuffle-transmuxer.path = "crates/transmuxer"
-tinc.path = "crates/tinc"
-tinc-cel.path = "crates/tinc/cel"
-tinc-pb-prost.path = "crates/tinc/pb-prost"
-tinc-build.path = "crates/tinc/build"
-tinc-derive.path = "crates/tinc/derive"
-openapiv3_1.path = "crates/openapiv3_1"
+# removal of ring forced dependency when using http3 feature.
+# https://github.com/seanmonstar/reqwest/pull/2796
+reqwest = { git = "https://github.com/TroyKomodo/reqwest.git", rev = "9cce4657b902263c762d34a3c6a5addb44988359" }
+# remove when https://github.com/testcontainers/testcontainers-rs/pull/847
+testcontainers = { git = "https://github.com/testcontainers/testcontainers-rs.git", rev = "6d8e248a5637a3bb8ac0bb390717f6c327ffbad1" }

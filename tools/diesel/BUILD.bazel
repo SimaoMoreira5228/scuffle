@@ -1,0 +1,6 @@
+alias(
+    name = "diesel",
+    actual = "@multitool//tools/diesel",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

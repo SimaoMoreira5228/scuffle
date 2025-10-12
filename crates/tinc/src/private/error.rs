@@ -294,7 +294,9 @@ pub enum TrackedErrorKind {
     DuplicateField,
     UnknownField,
     MissingField,
-    InvalidField { message: Box<str> },
+    InvalidField {
+        message: Box<str>,
+    },
 }
 
 #[derive(Debug)]

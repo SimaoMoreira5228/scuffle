@@ -1,4 +1,0 @@
-[[postcompile]]
-category = "fix"
-description = "copy Cargo.lock and patches to ensure build is correctly cached"
-authors = ["@troykomodo"]

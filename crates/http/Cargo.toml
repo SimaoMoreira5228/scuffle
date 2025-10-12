@@ -1,14 +1,14 @@
 [package]
 name = "scuffle-http"
-version = "0.2.1"
-edition = "2024"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.3.2"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-http"
-license = "MIT OR Apache-2.0"
-description = "A high-performance HTTP server supporting HTTP/1.1, HTTP/2, and HTTP/3."
+edition = "2024"
 keywords = ["http", "server", "http1", "http2", "http3"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A high-performance HTTP server supporting HTTP/1.1, HTTP/2, and HTTP/3."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
@@ -28,69 +28,109 @@ name = "scuffle-http-axum"
 path = "examples/axum.rs"
 required-features = ["default", "tls-rustls", "http3", "tower", "tracing"]
 
+[features]
+default = ["http1", "http2", "tower"]
+## Enables tracing support
+tracing = [
+    "dep:tracing",
+    "quinn?/log",
+    "h3-quinn?/tracing",
+    "h3?/tracing",
+    "tokio-rustls?/logging",
+]
+## Enables http1 support
+http1 = [
+    "dep:hyper",
+    "dep:hyper-util",
+    "dep:libc",
+    "hyper/http1",
+    "hyper-util/http1",
+]
+## Enabled http2 support
+http2 = [
+    "dep:hyper",
+    "dep:hyper-util",
+    "dep:libc",
+    "hyper/http2",
+    "hyper-util/http2",
+]
+## Enables http3 support
+http3 = ["dep:quinn", "dep:h3-quinn", "dep:h3"]
+## Enables tls via rustls
+tls-rustls = ["dep:tokio-rustls"]
+## Alias for ["http3", "tls-rustls"]
+http3-tls-rustls = ["http3", "tls-rustls"]
+## Enables tower service support
+tower = ["dep:tower"]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
 [dependencies]
-tokio = { version = "1.43.0" }
-thiserror = "2.0.11"
-futures = { version = "0.3.31", default-features = false, features = ["alloc"]}
-bon = "3.3.2"
-pin-project-lite = "0.2.16"
-scuffle-context = "0.1.1"
+bon = "3"
+futures = { default-features = false, features = ["alloc"], version = "0.3" }
+pin-project-lite = "0.2"
+scuffle-context = { path = "../context", version = "0.1" }
+thiserror = "2"
+tokio = "1"
 
 # HTTP parsing
-http = "1.2.0"
-http-body = "1.0.1"
-bytes = "1.9.0"
+bytes = "1"
+http = "1"
+http-body = "1"
 
 # Tracing
-tracing = { version = "0.1.41", optional = true }
+tracing = { optional = true, version = "0.1" }
 
 # HTTP/1.1, HTTP/2
-hyper = { version = "1.6.0", default-features = false, features = ["server"], optional = true }
-hyper-util = { version = "0.1.10", default-features = false, features = ["server", "tokio"], optional = true }
-libc = { version = "0.2.169", default-features = false, optional = true }
+hyper = { default-features = false, features = ["server"], optional = true, version = "1" }
+hyper-util = { default-features = false, features = ["server", "tokio"], optional = true, version = "0.1" }
+libc = { default-features = false, optional = true, version = "0.2" }
 
 # QUIC + HTTP/3
-quinn = { version = "0.11.6", default-features = false, features = ["platform-verifier", "runtime-tokio", "rustls-aws-lc-rs"], optional = true }
-h3-quinn = { version = "0.0.10", default-features = false, optional = true }
-h3 = { version = "0.0.8", default-features = false, optional = true }
+h3 = { default-features = false, optional = true, version = "0.0.8" }
+h3-quinn = { default-features = false, optional = true, version = "0.0.10" }
+quinn = { default-features = false, features = ["platform-verifier", "runtime-tokio", "rustls-aws-lc-rs"], optional = true, version = "0.11" }
 
 # TLS
-tokio-rustls = { version = "0.26.1", default-features = false, features = ["aws_lc_rs", "tls12"], optional = true }
-rustls = { version = "0.23.21", default-features = false, features = ["aws_lc_rs", "std", "tls12"], optional = true }
+tokio-rustls = { default-features = false, features = ["aws_lc_rs", "tls12"], optional = true, version = "0.26" }
 
 # Tower Services
-tower = { version = "0.5.2", default-features = false, features = ["make"], optional = true }
+tower = { default-features = false, features = ["make"], optional = true, version = "0.5" }
 
-scuffle-workspace-hack.workspace = true
+document-features = { optional = true, version = "0.2" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
 
 [dev-dependencies]
 # The http3 feature requires a custom build flag (see .cargo/config.toml)
-reqwest = { version = "0.12.15", default-features = false, features = ["rustls-tls", "http2", "http3"] }
-axum = { version = "0.8.1", features = ["ws"]}
-rustls-pemfile = "2.2.0"
-tokio-test = "0.4.4"
-scuffle-future-ext = "0.1.1"
+axum = { features = ["ws"], version = "0.8" }
+reqwest = { default-features = false, features = ["http2", "http3-aws-lc-rs", "rustls-tls-no-provider"], version = "0.12" }
+rustls-pemfile = "2"
+scuffle-future-ext = { path = "../future-ext" }
+tokio-test = "0.4"
 
 # For examples:
-tokio = { version = "1.43.0", features = ["full"] }
-tracing = { version = "0.1.41" }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-
-# https://doc.rust-lang.org/cargo/reference/features.html#dependency-features
-[features]
-default = ["http1", "http2", "tower"]
-tracing = ["dep:tracing", "quinn?/log", "h3-quinn?/tracing", "h3?/tracing", "tokio-rustls?/logging", "rustls?/logging"]
-http1 = ["dep:hyper", "dep:hyper-util", "dep:libc", "hyper/http1", "hyper-util/http1"]
-http2 = ["dep:hyper", "dep:hyper-util", "dep:libc", "hyper/http2", "hyper-util/http2"]
-http3 = ["dep:quinn", "dep:h3-quinn", "dep:h3"]
-tls-rustls = ["dep:tokio-rustls", "dep:rustls"]
-http3-tls-rustls = ["http3", "tls-rustls"]
-tower = ["dep:tower"]
+tokio = { features = ["full"], version = "1" }
+tracing = { version = "0.1" }
+tracing-subscriber = { features = ["env-filter"], version = "0.3" }
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
 
 [package.metadata.xtask.powerset]
-additive-features = ["tracing", "tower"]
+additive-features = ["tracing", "tower", "docs"]
 ignore-features = ["http3"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

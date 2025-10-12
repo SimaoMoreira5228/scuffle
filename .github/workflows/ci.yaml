@@ -7,94 +7,136 @@ on:
       - automation/brawl/merge/*
 
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 13 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  # By default, when a action is run against a PR it will use a merge commit from the target branch & the PR branch. We want to use just the PR branch.
-  # So this changes the SHA to the PR branch SHA or falls back to the current SHA (if its not a PR)
-  # https://github.com/actions/checkout/issues/426
   SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 defaults:
   run:
     shell: bash
 
-permissions:
-  # enable writing for semver-checks so it can write a pr comment
-  pull-requests: write
-
 jobs:
-  matrix_prep:
-    name: Matrix Prep
+  bazel-diff:
+    name: bazel-diff
+    runs-on: ubuntu-24.04
+    if: ${{ github.event_name == 'pull_request' }}
+    env:
+      MODIFIED_FILES: /tmp/modified-files.txt
+      HEAD_HASHES: /tmp/head-hashes.json
+      BASE_HASHES: /tmp/base-hashes.json
+      IMPACTED_TARGETS: /tmp/impacted-targets.txt
+      BASE_WORKTREE: /tmp/base
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup worktree
+        run: git worktree add ${{ env.BASE_WORKTREE }} ${{ github.event.pull_request.base.sha }}
+
+      - uses: ./.github/actions/setup-bazel
+        with:
+          build_buddy_token: ${{ secrets.BUILD_BUDDY_TOKEN }}
+
+      - name: File diff
+        run: git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.sha }} > ${{ env.MODIFIED_FILES }}
+
+      - name: Generate current hashes
+        run: bazel run //tools/bazel-diff -- generate-hashes --workspacePath=$(pwd) --keep_going --includeTargetType -co="--enable_workspace" > ${{ env.HEAD_HASHES }}
+
+      - name: Generate base hashes
+        run: bazel run //tools/bazel-diff -- generate-hashes --workspacePath=${{ env.BASE_WORKTREE }} --keep_going --includeTargetType -co="--enable_workspace" > ${{ env.BASE_HASHES }}
+
+      - name: Get impacted targets
+        run: bazel run //tools/bazel-diff -- get-impacted-targets --startingHashes=${{ env.BASE_HASHES }} --finalHashes=${{ env.HEAD_HASHES }} --output=${{ env.IMPACTED_TARGETS }}
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-diff-impacted-targets
+          path: ${{ env.IMPACTED_TARGETS }}
+
+  prep:
+    name: prep
     runs-on: ubuntu-24.04
     outputs:
-      matrix: ${{ steps.compute.outputs.matrix }}
+      prep: ${{ steps.compute.outputs.prep }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SHA }}
+      - uses: actions/checkout@v5
 
-      - name: Run matrix prep
+      - name: Run prep
         id: compute
         env:
           JSON_INPUT: ${{ toJson(github) }}
         run: |
           set -xeo pipefail
-          echo $JSON_INPUT | python3 .github/scripts/ci-matrix-prep.py | tee -a $GITHUB_OUTPUT
+          echo $JSON_INPUT | python3 .github/scripts/ci-prep.py | tee -a $GITHUB_OUTPUT
 
-  jobs:
-    name: ${{ matrix.job_name || 'Jobs' }}
-    needs: matrix_prep
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.matrix_prep.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SHA }}
+  check_vendor:
+    needs: [prep]
+    if: ${{ !failure() && fromJson(needs.prep.outputs.prep).check_vendor != null }}
+    uses: ./.github/workflows/ci-check-vendor.yaml
+    secrets:
+      build_buddy_token: ${{ secrets.BUILD_BUDDY_TOKEN }}
 
-      - name: Setup FFmpeg
-        if: ${{ matrix.ffmpeg != null }}
-        uses: ./.github/actions/setup-ffmpeg
-        with: ${{ matrix.ffmpeg }}
+  test:
+    needs: [prep, bazel-diff]
+    if: ${{ !failure() && fromJson(needs.prep.outputs.prep).test != null }}
+    uses: ./.github/workflows/ci-test.yaml
+    with:
+      commit_sha: "${{ fromJson(needs.prep.outputs.prep).test.commit_sha }}"
+      pr_number: "${{ fromJson(needs.prep.outputs.prep).test.pr_number }}"
+      matrix: "${{ toJson(fromJson(needs.prep.outputs.prep).test.matrix) }}"
+    secrets:
+      codecov_token: "${{ secrets.CODECOV_TOKEN }}"
+      build_buddy_token: "${{ secrets.BUILD_BUDDY_TOKEN }}"
 
-      - name: Setup Rust
-        if: ${{ matrix.rust != null }}
-        uses: ./.github/actions/setup-rust
-        with: ${{ matrix.rust }}
+  check_fmt:
+    needs: [prep]
+    if: ${{ !failure() && fromJson(needs.prep.outputs.prep).check_fmt != null }}
+    uses: ./.github/workflows/ci-check-fmt.yaml
+    secrets:
+      build_buddy_token: ${{ secrets.BUILD_BUDDY_TOKEN }}
 
-      - name: Setup Protoc
-        if: ${{ matrix.setup_protoc }}
-        uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+  grind:
+    needs: [prep, bazel-diff]
+    if: ${{ !failure() && fromJson(needs.prep.outputs.prep).grind != null }}
+    uses: ./.github/workflows/ci-grind.yaml
+    with:
+      matrix: "${{ toJson(fromJson(needs.prep.outputs.prep).grind.matrix) }}"
+    secrets:
+      codecov_token: "${{ secrets.CODECOV_TOKEN }}"
+      build_buddy_token: "${{ secrets.BUILD_BUDDY_TOKEN }}"
 
-      - name: Setup Secrets
-        if: ${{ matrix.secrets != null }}
-        run: |
-          set -eo pipefail
-          secrets='${{ toJson(secrets) }}'
-
-          for secret in $(echo '${{ toJson(matrix.secrets) }}' | jq -r '.[]'); do
-            value=$(echo "$secrets" | jq -r --arg key "$secret" '.[$key]')
-            echo "$secret=$value" >> $GITHUB_ENV
-            echo "Setting $secret to $value"
-          done
-
-      - name: Run ./.github/actions/ci/${{ matrix.job }}
-        uses: ./.github/actions/ci/dynamic
-        with:
-          uses: ./.github/actions/ci/${{ matrix.job }}
-          with: |
-            ${{ toJson(matrix.inputs) }}
+  preview:
+    needs: [prep, bazel-diff]
+    if: ${{ !failure() && fromJson(needs.prep.outputs.prep).preview != null }}
+    uses: ./.github/workflows/ci-preview.yaml
+    permissions:
+      pull-requests: write
+    with:
+      pr_number: "${{ fromJson(needs.prep.outputs.prep).preview.pr_number }}"
+      commit_sha: "${{ fromJson(needs.prep.outputs.prep).preview.commit_sha }}"
+      deploy: "${{ fromJson(needs.prep.outputs.prep).preview.deploy }}"
+    secrets:
+      build_buddy_token: ${{ secrets.BUILD_BUDDY_TOKEN }}
+      vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+      vercel_project_id_dashboard: ${{ secrets.VERCEL_PROJECT_ID_APP_SCUFFLE_CLOUD }}
+      vercel_project_id_docs: ${{ secrets.VERCEL_PROJECT_ID_DOCS_SCUFFLE_CLOUD }}
+      vercel_project_id_rustdoc: ${{ secrets.VERCEL_PROJECT_ID_DOCS_SCUFFLE_RS }}
+      vercel_project_id_cloud_emails_render: ${{ secrets.VERCEL_PROJECT_ID_SCUFFLECLOUD_EMAILS_RENDER }}
 
   brawl-done:
     runs-on: ubuntu-24.04
-    needs: [matrix_prep, jobs]
+    needs: [check_vendor, test, check_fmt, grind, preview]
     if: ${{ !cancelled() && github.event_name == 'push' }}
     steps:
       - name: calculate the correct exit status

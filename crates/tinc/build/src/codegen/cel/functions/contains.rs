@@ -39,28 +39,27 @@ impl Function for Contains {
                     ProtoModifiedValueType::Repeated(item) | ProtoModifiedValueType::Map(item, _),
                 )),
         }) = &this
+            && !matches!(item, ProtoValueType::Message { .. } | ProtoValueType::Enum(_))
         {
-            if !matches!(item, ProtoValueType::Message { .. } | ProtoValueType::Enum(_)) {
-                let op = match &ty {
-                    CelType::Proto(ProtoType::Modified(ProtoModifiedValueType::Repeated(_))) => {
-                        quote! { array_contains }
-                    }
-                    CelType::Proto(ProtoType::Modified(ProtoModifiedValueType::Map(_, _))) => {
-                        quote! { map_contains }
-                    }
-                    _ => unreachable!(),
-                };
+            let op = match &ty {
+                CelType::Proto(ProtoType::Modified(ProtoModifiedValueType::Repeated(_))) => {
+                    quote! { array_contains }
+                }
+                CelType::Proto(ProtoType::Modified(ProtoModifiedValueType::Map(_, _))) => {
+                    quote! { map_contains }
+                }
+                _ => unreachable!(),
+            };
 
-                return Ok(CompiledExpr::runtime(
-                    CelType::Proto(ProtoType::Value(ProtoValueType::Bool)),
-                    parse_quote! {
-                        ::tinc::__private::cel::#op(
-                            #expr,
-                            #arg,
-                        )
-                    },
-                ));
-            }
+            return Ok(CompiledExpr::runtime(
+                CelType::Proto(ProtoType::Value(ProtoValueType::Bool)),
+                parse_quote! {
+                    ::tinc::__private::cel::#op(
+                        #expr,
+                        #arg,
+                    )
+                },
+            ));
         }
 
         let this = this.clone().into_cel()?;
@@ -94,11 +93,13 @@ mod tests {
     use crate::codegen::cel::compiler::{CompiledExpr, Compiler, CompilerCtx};
     use crate::codegen::cel::functions::{Contains, Function};
     use crate::codegen::cel::types::CelType;
+    use crate::extern_paths::ExternPaths;
+    use crate::path_set::PathSet;
     use crate::types::{ProtoModifiedValueType, ProtoType, ProtoTypeRegistry, ProtoValueType};
 
     #[test]
     fn test_contains_syntax() {
-        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, crate::extern_paths::ExternPaths::new(crate::Mode::Prost));
+        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, ExternPaths::new(crate::Mode::Prost), PathSet::default());
         let compiler = Compiler::new(&registry);
         insta::assert_debug_snapshot!(Contains.compile(CompilerCtx::new(compiler.child(), None, &[])), @r#"
         Err(
@@ -136,7 +137,7 @@ mod tests {
     #[test]
     #[cfg(not(valgrind))]
     fn test_contains_runtime_string() {
-        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, crate::extern_paths::ExternPaths::new(crate::Mode::Prost));
+        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, ExternPaths::new(crate::Mode::Prost), PathSet::default());
         let compiler = Compiler::new(&registry);
 
         let string_value =
@@ -174,7 +175,7 @@ mod tests {
     #[test]
     #[cfg(not(valgrind))]
     fn test_contains_runtime_map() {
-        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, crate::extern_paths::ExternPaths::new(crate::Mode::Prost));
+        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, ExternPaths::new(crate::Mode::Prost), PathSet::default());
         let compiler = Compiler::new(&registry);
 
         let string_value = CompiledExpr::runtime(
@@ -231,7 +232,7 @@ mod tests {
     #[test]
     #[cfg(not(valgrind))]
     fn test_contains_runtime_repeated() {
-        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, crate::extern_paths::ExternPaths::new(crate::Mode::Prost));
+        let registry = ProtoTypeRegistry::new(crate::Mode::Prost, ExternPaths::new(crate::Mode::Prost), PathSet::default());
         let compiler = Compiler::new(&registry);
 
         let string_value = CompiledExpr::runtime(

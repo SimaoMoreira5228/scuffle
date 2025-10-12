@@ -1,0 +1,83 @@
+[package]
+name = "scufflecloud-core"
+version = "0.1.0"
+authors = ["Scuffle <opensource@scuffle.cloud>"]
+edition = "2024"
+license = "AGPL-3.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Authentication/Core server for scuffle.cloud"
+
+[[bin]]
+name = "scufflecloud-core-standalone"
+path = "bin/standalone/main.rs"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[dependencies]
+anyhow = "1"
+argon2 = { features = ["std"], version = "0.5" }
+async-trait = "0.1"
+axum = "0.8"
+base64 = "0.22"
+cedar-policy = "4"
+chrono = "0.4"
+core-cedar = { path = "./cedar", package = "scufflecloud-core-cedar" }
+core-db-types = { path = "./db-types", package = "scufflecloud-core-db-types" }
+core-emails = { path = "./emails", package = "scufflecloud-core-emails" }
+core-traits = { path = "./traits", package = "scufflecloud-core-traits" }
+derive_more = { features = ["display"], version = "2" }
+diesel = { features = ["chrono", "network-address", "serde_json", "uuid"], version = "2" }
+diesel-async = { features = ["async-connection-wrapper", "bb8", "postgres"], version = "0.7" }
+ext-traits = { path = "../ext-traits", package = "scufflecloud-ext-traits" }
+fred = "10"
+geo-ip = { path = "../geo-ip", package = "scufflecloud-geo-ip" }
+hmac = "0.12"
+ipnetwork = { features = ["serde"], version = "0.21" }
+itertools = "0.14"
+pb = { package = "scufflecloud-proto", path = "../proto" }
+pkcs8 = "0.10"
+prost = "0.14"
+rand = "0.8"
+reqwest = { features = ["json", "rustls-tls-native-roots-no-provider"], version = "0.12", default-features = false }
+rsa = { features = ["sha2"], version = "0.9" }
+rustls = "0.23"
+sailfish = "0.10"
+sailfish-macros = "0.10"
+scuffle-batching = { path = "../../crates/batching" }
+scuffle-bootstrap = { path = "../../crates/bootstrap" }
+scuffle-bootstrap-telemetry = { features = ["opentelemetry-logs", "opentelemetry-traces"], path = "../../crates/bootstrap-telemetry" }
+scuffle-context = { path = "../../crates/context" }
+scuffle-http = { features = ["tracing"], path = "../../crates/http" }
+scuffle-settings = { features = ["all-formats", "bootstrap"], path = "../../crates/settings" }
+scuffle-signal = { features = ["bootstrap"], path = "../../crates/signal" }
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+sha2 = "0.10"
+smart-default = "0.7"
+swagger-ui-dist = "5"
+thiserror = "2"
+tinc = { path = "../../crates/tinc" }
+tokio = { default-features = false, features = ["sync"], version = "1" }
+tonic = { version = "0.14", features = ["tls-aws-lc"] }
+tonic-reflection = "0.14"
+tonic-types = "0.14"
+tonic-web = "0.14"
+totp-rs = { features = ["otpauth", "qr"], version = "5" }
+tower-http = { features = ["cors", "trace"], version = "0.6" }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ulid = { features = ["uuid"], version = "1" }
+url = "2"
+urlencoding = "2"
+uuid = "1"
+webauthn-rs = { features = ["danger-allow-state-serialisation"], version = "0.5" }
+
+[package.metadata.sync-readme.badges]
+docs-rs = false
+crates-io = false
+license = true
+codecov = true

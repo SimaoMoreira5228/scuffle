@@ -1,25 +1,42 @@
+<!-- dprint-ignore-file -->
+<!-- sync-readme title [[ -->
 # scuffle-rtmp
+<!-- sync-readme ]] -->
 
 > [!WARNING]  
 > This crate is under active development and may not be stable.
 
-[![crates.io](https://img.shields.io/crates/v/scuffle-rtmp.svg)](https://crates.io/crates/scuffle-rtmp) [![docs.rs](https://img.shields.io/docsrs/scuffle-rtmp)](https://docs.rs/scuffle-rtmp)
+<!-- sync-readme badge [[ -->
+[![docs.rs](https://img.shields.io/docsrs/scuffle-rtmp/0.2.3.svg?logo=docs.rs&label=docs.rs&style=flat-square)](https://docs.rs/scuffle-rtmp/0.2.3)
+[![crates.io](https://img.shields.io/badge/crates.io-v0.2.3-orange?style=flat-square&logo=rust&logoColor=white)](https://crates.io/crates/scuffle-rtmp/0.2.3)
+![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-purple.svg?style=flat-square)
+![Crates.io Size](https://img.shields.io/crates/size/scuffle-rtmp/0.2.3.svg?style=flat-square)
+![Crates.io Downloads](https://img.shields.io/crates/dv/scuffle-rtmp/0.2.3.svg?&label=downloads&style=flat-square)
+[![Codecov](https://img.shields.io/codecov/c/github/scufflecloud/scuffle.svg?label=codecov&logo=codecov&style=flat-square)](https://app.codecov.io/gh/scufflecloud/scuffle)
+<!-- sync-readme ]] -->
 
 ---
 
+<!-- sync-readme rustdoc [[ -->
 A crate for handling RTMP server connections.
 
-## Specifications
+See the [changelog](./CHANGELOG.md) for a full release history.
 
-| Name | Version | Link | Comments |
-| --- | --- | --- | --- |
-| Adobe’s Real Time Messaging Protocol | `1.0` | <https://github.com/veovera/enhanced-rtmp/blob/main/docs/legacy/rtmp-v1-0-spec.pdf> | Refered to as 'Legacy RTMP spec' in this documentation |
-| Enhancing RTMP, FLV | `v1-2024-02-29-r1` | <https://github.com/veovera/enhanced-rtmp/blob/main/docs/enhanced/enhanced-rtmp-v1.pdf> | |
-| Enhanced RTMP | `v2-2024-10-22-b1` | <https://github.com/veovera/enhanced-rtmp/blob/main/docs/enhanced/enhanced-rtmp-v2.pdf> | Refered to as 'Enhanced RTMP spec' in this documentation |
+### Specifications
 
-## Example
+|Name|Version|Link|Comments|
+|----|-------|----|--------|
+|Adobe’s Real Time Messaging Protocol|`1.0`|<https://github.com/veovera/enhanced-rtmp/blob/main/docs/legacy/rtmp-v1-0-spec.pdf>|Refered to as ‘Legacy RTMP spec’ in this documentation|
+|Enhancing RTMP, FLV|`v1-2024-02-29-r1`|<https://github.com/veovera/enhanced-rtmp/blob/main/docs/enhanced/enhanced-rtmp-v1.pdf>||
+|Enhanced RTMP|`v2-2024-10-22-b1`|<https://github.com/veovera/enhanced-rtmp/blob/main/docs/enhanced/enhanced-rtmp-v2.pdf>|Refered to as ‘Enhanced RTMP spec’ in this documentation|
 
-```rust
+### Feature flags
+
+* **`docs`** —  Enables changelog and documentation of feature flags
+
+### Example
+
+````rust,no_run
 struct Handler;
 
 impl SessionHandler for Handler {
@@ -54,17 +71,12 @@ async fn main() {
         });
     }
 }
-```
+````
 
-## Status
+### License
 
-This crate is currently under development and is not yet stable.
-
-Unit tests are not yet fully implemented. Use at your own risk.
-
-## License
-
-This project is licensed under the [MIT](./LICENSE.MIT) or [Apache-2.0](./LICENSE.Apache-2.0) license.
+This project is licensed under the MIT or Apache-2.0 license.
 You can choose between one of them if you use this work.
 
 `SPDX-License-Identifier: MIT OR Apache-2.0`
+<!-- sync-readme ]] -->

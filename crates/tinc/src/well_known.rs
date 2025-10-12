@@ -2,7 +2,6 @@
 
 /// Wellknown types for Prost
 #[cfg(feature = "prost")]
-#[cfg_attr(docsrs, doc(cfg(feature = "prost")))]
 pub mod prost {
     pub use prost_types::*;
 

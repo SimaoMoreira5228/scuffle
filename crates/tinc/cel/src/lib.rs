@@ -1,11 +1,19 @@
+//! Currently this is a fully private api used by `tinc` and `tinc-build` to
+//! compile and execute [CEL](https://cel.dev/) expressions.
+#![cfg_attr(feature = "docs", doc = "## Feature flags")]
+#![cfg_attr(feature = "docs", doc = document_features::document_features!())]
+//! ## License
+//!
+//! This project is licensed under the MIT or Apache-2.0 license.
+//! You can choose between one of them if you use this work.
+//!
+//! `SPDX-License-Identifier: MIT OR Apache-2.0`
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unreachable_pub)]
+#![deny(clippy::mod_module_files)]
 #![doc(hidden)]
-
-//! Currently this is a fully private api used by `tinc` and `tinc-build` to
-//! compile and execute [CEL](https://cel.dev/) expressions.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
@@ -31,11 +39,19 @@ pub enum CelError<'a> {
         op: &'static str,
     },
     #[error("bad unary operation: {op}{value}")]
-    BadUnaryOperation { op: &'static str, value: CelValue<'a> },
+    BadUnaryOperation {
+        op: &'static str,
+        value: CelValue<'a>,
+    },
     #[error("number out of range when performing {op}")]
-    NumberOutOfRange { op: &'static str },
+    NumberOutOfRange {
+        op: &'static str,
+    },
     #[error("bad access when trying to member {member} on {container}")]
-    BadAccess { member: CelValue<'a>, container: CelValue<'a> },
+    BadAccess {
+        member: CelValue<'a>,
+        container: CelValue<'a>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -482,6 +498,22 @@ impl<'a> CelValue<'a> {
         }
     }
 
+    pub fn cel_is_ulid(value: impl CelValueConv<'a>) -> Result<bool, CelError<'a>> {
+        match value.conv() {
+            CelValue::String(s) => Ok(s.parse::<ulid::Ulid>().is_ok()),
+            CelValue::Bytes(b) => {
+                if b.as_ref().len() == 16 {
+                    Ok(true)
+                } else if let Ok(s) = std::str::from_utf8(b.as_ref()) {
+                    Ok(s.parse::<ulid::Ulid>().is_ok())
+                } else {
+                    Ok(false)
+                }
+            }
+            value => Err(CelError::BadUnaryOperation { op: "isUlid", value }),
+        }
+    }
+
     pub fn cel_is_hostname(value: impl CelValueConv<'a>) -> Result<bool, CelError<'a>> {
         match value.conv() {
             CelValue::String(s) => Ok(matches!(url::Host::parse(&s), Ok(url::Host::Domain(_)))),
@@ -521,6 +553,28 @@ impl<'a> CelValue<'a> {
                 }
             }
             value => Err(CelError::BadUnaryOperation { op: "isEmail", value }),
+        }
+    }
+
+    pub fn cel_is_nan(value: impl CelValueConv<'a>) -> Result<bool, CelError<'a>> {
+        match value.conv() {
+            CelValue::Number(n) => match n {
+                NumberTy::I64(_) => Ok(false),
+                NumberTy::U64(_) => Ok(false),
+                NumberTy::F64(f) => Ok(f.is_nan()),
+            },
+            value => Err(CelError::BadUnaryOperation { op: "isNaN", value }),
+        }
+    }
+
+    pub fn cel_is_inf(value: impl CelValueConv<'a>) -> Result<bool, CelError<'a>> {
+        match value.conv() {
+            CelValue::Number(n) => match n {
+                NumberTy::I64(_) => Ok(false),
+                NumberTy::U64(_) => Ok(false),
+                NumberTy::F64(f) => Ok(f.is_infinite()),
+            },
+            value => Err(CelError::BadUnaryOperation { op: "isInf", value }),
         }
     }
 
@@ -2071,6 +2125,70 @@ mod tests {
         let invalid = Bytes::from_static(&[0xff, 0xfe, 0xff]);
         let result = CelValue::cel_is_email(invalid).unwrap();
         assert!(!result, "Expected false for invalid UTF-8 email bytes");
+    }
+
+    #[test]
+    fn celvalue_is_nan() {
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(2.0)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(5)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(13u64)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(f64::INFINITY)).unwrap(),
+            "Expected false for infinity"
+        );
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(f64::NEG_INFINITY)).unwrap(),
+            "Expected false for neg infinity"
+        );
+        assert!(
+            CelValue::cel_is_nan(NumberTy::from(f64::NAN)).unwrap(),
+            "Expected true for nan"
+        );
+        assert!(matches!(
+            CelValue::cel_is_nan("str").unwrap_err(),
+            CelError::BadUnaryOperation { op, .. } if op == "isNaN"
+        ));
+    }
+
+    #[test]
+    fn celvalue_is_inf() {
+        assert!(
+            !CelValue::cel_is_inf(NumberTy::from(2.0)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            !CelValue::cel_is_inf(NumberTy::from(5)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            !CelValue::cel_is_nan(NumberTy::from(13u64)).unwrap(),
+            "Expected false for valid number"
+        );
+        assert!(
+            CelValue::cel_is_inf(NumberTy::from(f64::INFINITY)).unwrap(),
+            "Expected true for infinity"
+        );
+        assert!(
+            CelValue::cel_is_inf(NumberTy::from(f64::NEG_INFINITY)).unwrap(),
+            "Expected true for neg infinity"
+        );
+        assert!(
+            !CelValue::cel_is_inf(NumberTy::from(f64::NAN)).unwrap(),
+            "Expected false for nan"
+        );
+        assert!(matches!(
+            CelValue::cel_is_inf("str").unwrap_err(),
+            CelError::BadUnaryOperation { op, .. } if op == "isInf"
+        ));
     }
 
     #[test]

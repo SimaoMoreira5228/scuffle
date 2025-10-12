@@ -1,25 +1,52 @@
 [package]
 name = "scuffle-context"
-version = "0.1.2"
-edition = "2024"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.1.5"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-context"
-license = "MIT OR Apache-2.0"
-description = "Go-like context utilities for Rust."
+edition = "2024"
 keywords = ["context", "async"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Go-like context utilities for Rust."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
+document-features = { optional = true, version = "0.2" }
 futures-lite = "2"
 pin-project-lite = "0.2"
-tokio-util = "0.7"
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
 tokio = "1"
-scuffle-workspace-hack.workspace = true
+tokio-util = "0.7"
 
 [dev-dependencies]
-tokio-test = "0.4.4"
-scuffle-future-ext = "0.1.1"
+scuffle-future-ext = { path = "../future-ext" }
+tokio = { features = ["macros"], version = "1" }
+tokio-test = "0.4"
+
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

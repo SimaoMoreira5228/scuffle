@@ -1,24 +1,35 @@
 [package]
 name = "scuffle-metrics-derive"
-version = "0.1.2"
-edition = "2024"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.4.2"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-metrics-derive"
-license = "MIT OR Apache-2.0"
-description = "Derive macros for scuffle-metrics."
+edition = "2024"
 keywords = ["metrics", "derive", "macros"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "Derive macros for scuffle-metrics."
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = { version = "2", features = ["full"] }
-quote = "1"
-darling = "0.20"
+darling = "0.21"
 proc-macro2 = "1"
-scuffle-workspace-hack.workspace = true
+quote = "1"
+syn = { features = ["full"], version = "2" }
 
 [dev-dependencies]
-scuffle-metrics = "0.2.0"
+# scuffle-metrics = { path = ".." }
+
+[package.metadata.xtask.release]
+group = "scuffle-metrics"
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

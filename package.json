@@ -1,0 +1,22 @@
+{
+    "packageManager": "pnpm@10.18.1",
+    "private": true,
+    "scripts": {
+        "dev": "turbo run dev",
+        "dev:dashboard": "pnpm dev --filter=@scufflecloud/dashboard",
+        "lint:fix": "turbo run lint:fix",
+        "turbo": "turbo"
+    },
+    "devDependencies": {
+        "turbo": "^2.5.6"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@swc/core",
+            "core-js",
+            "core-js-pure",
+            "esbuild",
+            "msw"
+        ]
+    }
+}

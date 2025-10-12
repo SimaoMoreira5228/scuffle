@@ -1,35 +1,63 @@
 [package]
 name = "tinc-cel"
-version = "0.0.1"
-edition = "2024"
-description = "A CEL Type used by tinc-build and tinc for validating protobuf messages"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.2.0"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/tinc-build"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["grpc", "protobuf", "tonic", "codegen"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A CEL Type used by tinc-build and tinc for validating protobuf messages"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
+[features]
+## Enables runtime enum type indexing
+runtime = []
+## Enables documentation of feature flags
+docs = ["dep:document-features"]
+
 [dependencies]
-num-traits = "0.2.19"
-bytes = "1.5"
-float-cmp = "0.10"
-thiserror = "2"
+bytes = "1"
 chrono = "0.4"
-regex = "1"
-linkme = "0.3"
+document-features = { optional = true, version = "0.2" }
+email_address = "0.2"
+float-cmp = "0.10"
 fmtools = "0.1"
-uuid = "1"
+linkme = "0.3"
+num-traits = "0.2"
+regex = "1"
+thiserror = "2"
+ulid = "1"
 url = "2"
-email_address = "0.2.9"
-scuffle-workspace-hack.workspace = true
+uuid = "1"
 
 [dev-dependencies]
-insta = "1.43"
+insta = "1"
 
-[features]
-runtime = []
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.release]
+group = "tinc"
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+Annotations = "./annotations.proto"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

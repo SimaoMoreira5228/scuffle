@@ -1,29 +1,58 @@
+<!-- dprint-ignore-file -->
+<!-- sync-readme title [[ -->
 # scuffle-batching
+<!-- sync-readme ]] -->
 
 > [!WARNING]  
 > This crate is under active development and may not be stable.
 
- [![crates.io](https://img.shields.io/crates/v/scuffle-batching.svg)](https://crates.io/crates/scuffle-batching) [![docs.rs](https://img.shields.io/docsrs/scuffle-batching)](https://docs.rs/scuffle-batching)
+<!-- sync-readme badge [[ -->
+[![docs.rs](https://img.shields.io/docsrs/scuffle-batching/0.1.6.svg?logo=docs.rs&label=docs.rs&style=flat-square)](https://docs.rs/scuffle-batching/0.1.6)
+[![crates.io](https://img.shields.io/badge/crates.io-v0.1.6-orange?style=flat-square&logo=rust&logoColor=white)](https://crates.io/crates/scuffle-batching/0.1.6)
+![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-purple.svg?style=flat-square)
+![Crates.io Size](https://img.shields.io/crates/size/scuffle-batching/0.1.6.svg?style=flat-square)
+![Crates.io Downloads](https://img.shields.io/crates/dv/scuffle-batching/0.1.6.svg?&label=downloads&style=flat-square)
+[![Codecov](https://img.shields.io/codecov/c/github/scufflecloud/scuffle.svg?label=codecov&logo=codecov&style=flat-square)](https://app.codecov.io/gh/scufflecloud/scuffle)
+<!-- sync-readme ]] -->
 
 ---
 
+<!-- sync-readme rustdoc [[ -->
 A crate designed to batch multiple requests into a single request.
 
-## Why do we need this?
+See the [changelog](./CHANGELOG.md) for a full release history.
 
-Often when we are building applications we need to load multiple items from a database or some other external resource. It is often expensive to load each item individually, and this is typically why most drivers have some form of multi-item loading or executing. This crate provides an improved version of this functionality by combining multiple calls from different scopes into a single batched request.
+### Feature flags
 
-## Tradeoffs
+* **`docs`** —  Enables changelog and documentation of feature flags
 
-Because we are buffering requests for a short period of time we do see higher latencies when there are not many requests. This is because the overhead from just processing the requests is lower then the time we spend buffering.
+### Why do we need this?
 
-However, this is often negated when we have a large number of requests as we see on average lower latencies due to more efficient use of resources. Latency is also more consistent as we are doing fewer requests to the external resource.
+Often when we are building applications we need to load multiple items from
+a database or some other external resource. It is often expensive to load
+each item individually, and this is typically why most drivers have some
+form of multi-item loading or executing. This crate provides an improved
+version of this functionality by combining multiple calls from different
+scopes into a single batched request.
 
-## Usage
+### Tradeoffs
 
-Here is an example of how to use the `DataLoader` interface to batch multiple reads from a database.
+Because we are buffering requests for a short period of time we do see
+higher latencies when there are not many requests. This is because the
+overhead from just processing the requests is lower then the time we spend
+buffering.
 
-```rust
+However, this is often negated when we have a large number of requests as we
+see on average lower latencies due to more efficient use of resources.
+Latency is also more consistent as we are doing fewer requests to the
+external resource.
+
+### Usage
+
+Here is an example of how to use the `DataLoader` interface to batch
+multiple reads from a database.
+
+````rust
 struct MyUserLoader(SomeDatabase);
 
 impl DataLoaderFetcher for MyUserLoader {
@@ -44,11 +73,11 @@ let loader = DataLoaderBuilder::new().build(MyUserLoader(database));
 // Will only make a single request to the database and load both users
 // You can also use `loader.load_many` if you have more then one item to load.
 let (user1, user2): (Result<_, _>, Result<_, _>) = tokio::join!(loader.load(1), loader.load(2));
-```
+````
 
 Another use case might be to batch multiple writes to a database.
 
-```rust
+````rust
 struct MyUserUpdater(SomeDatabase);
 
 impl BatchExecutor for MyUserUpdater {
@@ -89,11 +118,12 @@ if success1.is_some_and(|s| !s) {
 if success2.is_some_and(|s| !s) {
     eprintln!("Failed to insert user 2");
 }
-```
+````
 
-## License
+### License
 
-This project is licensed under the [MIT](./LICENSE.MIT) or [Apache-2.0](./LICENSE.Apache-2.0) license.
+This project is licensed under the MIT or Apache-2.0 license.
 You can choose between one of them if you use this work.
 
 `SPDX-License-Identifier: MIT OR Apache-2.0`
+<!-- sync-readme ]] -->

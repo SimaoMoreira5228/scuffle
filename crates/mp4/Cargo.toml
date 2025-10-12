@@ -1,29 +1,56 @@
 [package]
 name = "scuffle-mp4"
-version = "0.1.2"
-edition = "2024"
-description = "A pure Rust MP4 parser and writer."
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.1.5"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-mp4"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["mp4", "video", "codec"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A pure Rust MP4 parser and writer."
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
 
 [dependencies]
-byteorder = "1.5"
-bytes = "1.5"
-fixed = "1.24"
-paste = "1.0"
-
-
-scuffle-h264 = "0.2.0"
-scuffle-h265 = "0.2.0"
-scuffle-av1 = "0.1.2"
-scuffle-aac = "0.1.2"
-scuffle-bytes-util = "0.1.2"
-scuffle-workspace-hack.workspace = true
+byteorder = "1"
+bytes = "1"
+document-features = { optional = true, version = "0.2" }
+fixed = "1"
+paste = "1"
+scuffle-aac = { path = "../aac", version = "0.1" }
+scuffle-av1 = { path = "../av1", version = "0.1" }
+scuffle-bytes-util = { path = "../bytes-util", version = "0.1" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-h264 = { path = "../h264", version = "0.2" }
+scuffle-h265 = { path = "../h265", version = "0.2" }
 
 [dev-dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { features = ["derive"], version = "1" }
 serde_json = "1"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

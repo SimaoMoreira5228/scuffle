@@ -1,20 +1,44 @@
 [package]
 name = "tinc-derive"
-version = "0.1.0"
-edition = "2024"
-description = "A derive macro that generates code for tinc protobuf annotations"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.2.0"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/tinc-derive"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["grpc", "protobuf", "tonic", "codegen"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A derive macro that generates code for tinc protobuf annotations"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [lib]
 proc-macro = true
 
 [dependencies]
+proc-macro2 = { version = "1" }
+quote = { version = "1" }
 syn = { version = "2" }
-quote = { version = "1.0" }
-proc-macro2 = { version = "1.0" }
-scuffle-workspace-hack.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.release]
+group = "tinc"
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+Annotations = "./annotations.proto"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

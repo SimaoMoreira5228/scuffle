@@ -1,54 +1,77 @@
 [package]
 name = "scuffle-rtmp"
-version = "0.2.0"
-edition = "2024"
-description = "A pure Rust RTMP server"
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.2.3"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-rtmp"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["rtmp", "server", "streaming"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A pure Rust RTMP server"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = [
-  'cfg(coverage_nightly)',
-  'cfg(valgrind)',
-] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)', 'cfg(valgrind)'] }
+
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
 
 [[example]]
 name = "scuffle-rtmp-basic"
 path = "examples/basic.rs"
 
 [dependencies]
-tokio = { version = "1.36", features = ["io-util", "sync"] }
+byteorder = "1"
+bytes = "1"
 serde = "1"
 serde_derive = "1"
-byteorder = "1.5"
-bytes = "1.5"
+thiserror = "2"
+tokio = { features = ["io-util", "sync"], version = "1" }
 tracing = "0.1"
-thiserror = "2.0"
 
-rand = "0.9"
 hmac = "0.12"
+rand = "0.9"
 sha2 = "0.10"
 
-num-traits = "0.2"
+bitmask-enum = "2"
 num-derive = "0.4"
-bitmask-enum = "2.2.5"
+num-traits = "0.2"
 
-nutype-enum = "0.1.2"
-scuffle-amf0 = { version = "0.2.0", features = ["serde"] }
-scuffle-bytes-util = "0.1.1"
-scuffle-future-ext = "0.1.1"
-scuffle-context = "0.1.1"
-scuffle-workspace-hack.workspace = true
+document-features = { optional = true, version = "0.2" }
+nutype-enum = { path = "../nutype-enum", version = "0.1" }
+scuffle-amf0 = { features = ["serde"], path = "../amf0", version = "0.2" }
+scuffle-bytes-util = { features = ["serde"], path = "../bytes-util", version = "0.1" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-context = { path = "../context", version = "0.1" }
+scuffle-future-ext = { path = "../future-ext", version = "0.1" }
 
 [dev-dependencies]
-tokio = { version = "1.44.1", features = ["full"] }
-serde_json = "1.0"
+serde_json = "1"
+tokio = { features = ["full"], version = "1" }
 
 # For examples:
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-scuffle-flv = "0.2.0"
+scuffle-flv = { path = "../flv" }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.xtask.powerset]
+additive-features = ["docs"]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

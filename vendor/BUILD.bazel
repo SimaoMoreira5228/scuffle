@@ -1,0 +1,85 @@
+load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_vendor", "render_config")
+
+openssl_annotation = crate.annotation(
+    build_script_data = [
+        "@//misc/toolchains/openssl:include",
+        "@//misc/toolchains/openssl:lib",
+    ],
+    build_script_env = {
+        "OPENSSL_NO_VENDOR": "1",
+        "OPENSSL_LIB_DIR": "$(location @//misc/toolchains/openssl:lib)",
+        "OPENSSL_INCLUDE_DIR": "$(location @//misc/toolchains/openssl:include)",
+        "OPENSSL_STATIC": "1",
+    },
+)
+
+crates_vendor(
+    name = "cargo_vendor",
+    annotations = {
+        "reqwest": [
+            crate.annotation(
+                rustc_flags = ["--cfg=reqwest_unstable"],
+            ),
+        ],
+        "rusty_ffmpeg": [
+            crate.annotation(
+                build_script_data = [
+                    "@//misc/toolchains/ffmpeg:lib",
+                    "@//misc/toolchains/ffmpeg:include",
+                    "@//misc/toolchains/clang:libclang",
+                ],
+                build_script_env = {
+                    "CLANG_PATH": "$${pwd}/$(CC)",
+                    "BINDGEN_EXTRA_CLANG_ARGS": "$(CFLAGS)",
+                    "FFMPEG_DLL_PATH": "$(execpath @//misc/toolchains/ffmpeg:lib)",
+                    "FFMPEG_INCLUDE_DIR": "$(execpath @//misc/toolchains/ffmpeg:include)",
+                    "LIBCLANG_PATH": "$(execpath @//misc/toolchains/clang:libclang)",
+                },
+            ),
+        ],
+        "aws-lc-sys": [
+            crate.annotation(
+                build_script_env = {
+                    # aws-lc-sys does not respect `LDFLAGS` so we need to
+                    # add `-fuse-ld=lld` to instruct the compiler to use
+                    # `lld` instead of `ld. We also need to add `-Wno-error`
+                    # since this crate has a lot of warnings and our typical
+                    # toolchain disallows them and then we silence them with `-w`.
+                    # See https://github.com/aws/aws-lc-rs/issues/858
+                    "CFLAGS": "$(CFLAGS) -fuse-ld=lld -Wno-error -w",
+                },
+            ),
+        ],
+        "sailfish-compiler": [
+            crate.annotation(
+                gen_build_script = False,
+                rustc_env = {
+                    "OUT_DIR": "/tmp",
+                },
+            ),
+        ],
+        "openssl-sys": [
+            openssl_annotation,
+        ],
+    },
+    cargo_bazel = "//misc/toolchains/rust:cargo-bazel",
+    cargo_lockfile = "//:Cargo.lock",
+    generate_build_scripts = True,
+    manifests = ["//:Cargo.toml"],
+    mode = "remote",
+    render_config = render_config(
+        default_alias_rule = "opt",
+    ),
+    supported_platform_triples = [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "aarch64-pc-windows-msvc",
+        "wasm32-unknown-unknown",
+    ],
+    tags = ["manual"],
+    vendor_path = "cargo",
+    visibility = ["//visibility:public"],
+)

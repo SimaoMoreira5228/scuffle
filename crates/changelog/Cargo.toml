@@ -1,0 +1,36 @@
+[package]
+name = "scuffle-changelog"
+version = "0.1.1"
+authors = ["Scuffle <opensource@scuffle.cloud>"]
+documentation = "https://docs.rs/scuffle-changelog"
+edition = "2024"
+keywords = ["documentation", "changelog", "embed"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A helper macro to embed changelogs in crate docs."
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[lib]
+proc-macro = true
+
+[dependencies]
+convert_case = "0.8"
+fmtools = "0.1"
+proc-macro2 = "1"
+quote = "1"
+regex = "1"
+semver = "1"
+# unfortunately we need syn full for `ItemMod`w
+syn = { features = ["full"], version = "2" }
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

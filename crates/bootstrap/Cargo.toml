@@ -1,14 +1,14 @@
 [package]
 name = "scuffle-bootstrap"
-version = "0.1.2"
-edition = "2024"
-description = "A utility crate for creating binaries."
-repository = "https://github.com/scufflecloud/scuffle"
+version = "0.1.7"
 authors = ["Scuffle <opensource@scuffle.cloud>"]
-readme = "README.md"
 documentation = "https://docs.rs/scuffle-bootstrap"
-license = "MIT OR Apache-2.0"
+edition = "2024"
 keywords = ["bootstrap", "binary", "cli", "config"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "A utility crate for creating binaries."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
@@ -25,26 +25,50 @@ path = "examples/cli.rs"
 name = "scuffle-bootstrap-tracing"
 path = "examples/tracing.rs"
 
+[features]
+## Enables changelog and documentation of feature flags
+docs = ["dep:scuffle-changelog", "dep:document-features"]
+
 [dependencies]
 anyhow = "1.0"
-tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 pin-project-lite = "0.2"
+tokio = { features = ["full"], version = "1" }
 
-scuffle-context = "0.1.2"
-scuffle-bootstrap-derive = "0.1.2"
-scuffle-workspace-hack.workspace = true
+document-features = { optional = true, version = "0.2" }
+scuffle-bootstrap-derive = { path = "derive", version = "=0.1.7" }
+scuffle-changelog = { optional = true, path = "../changelog", version = "0.1" }
+scuffle-context = { path = "../context", version = "0.1" }
 
 [dev-dependencies]
-insta = "1.42"
-postcompile = "0.2.0"
-scuffle-future-ext = "0.1.1"
-scuffle-signal = { version = "0.3.0", features = ["bootstrap"] }
+insta = "1"
+postcompile = { path = "../postcompile" }
+scuffle-future-ext = { path = "../future-ext" }
+scuffle-signal = { features = ["bootstrap"], path = "../signal" }
 
 # For examples:
+scuffle-settings = { features = ["bootstrap"], path = "../settings" }
 serde = "1"
 serde_derive = "1"
 smart-default = "0.7"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-scuffle-settings = { version = "0.1.1", features = ["bootstrap"] }
+
+[package.metadata.docs.rs]
+all-features = true
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
+    "--sort-modules-by-appearance",
+    "--generate-link-to-definition",
+]
+
+[package.metadata.sync-readme.rustdoc-mappings]
+changelog = "./CHANGELOG.md"
+
+[package.metadata.sync-readme.badges]
+docs-rs = true
+crates-io = true
+license = true
+codecov = true

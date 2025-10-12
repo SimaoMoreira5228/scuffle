@@ -1,0 +1,23 @@
+[package]
+name = "scufflecloud-id"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0"
+publish = false
+readme = "README.md"
+repository = "https://github.com/scufflecloud/scuffle"
+description = "ID library for scuffle.cloud"
+
+[dependencies]
+diesel = { version = "2", default-features = false }
+serde = "1"
+serde_derive = "1"
+thiserror = "2"
+ulid = "1"
+uuid = "1"
+
+[package.metadata.sync-readme.badges]
+docs-rs = false
+crates-io = false
+license = true
+codecov = true

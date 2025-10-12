@@ -1,0 +1,3 @@
+[merge "lockfile"]
+    name = lockfile auto-regenerator
+    driver = ./misc/utils/lockfile_rebase.sh %O %A %B %L %P
